@@ -12,7 +12,7 @@ import '../providers/filter_overlay_provider.dart';
 import 'calendar_event_card_widget.dart';
 
 class CalendarBodyWidget extends ConsumerStatefulWidget {
-  const CalendarBodyWidget({Key? key}) : super(key: key);
+  const CalendarBodyWidget({super.key});
 
   @override
   _CalendarBodyWidgetState createState() => _CalendarBodyWidgetState();
@@ -22,9 +22,12 @@ class _CalendarBodyWidgetState extends ConsumerState<CalendarBodyWidget> {
   @override
   void initState() {
     super.initState();
-    final datepickerState = ref.read(datepickerNotifierProvider);
-    final notifier = ref.read(calendarEventsNotifierProvider.notifier);
-    notifier.fetchEventsForDate(datepickerState.selectedDate);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final datepickerState = ref.read(datepickerNotifierProvider);
+      final notifier = ref.read(calendarEventsNotifierProvider.notifier);
+      notifier.fetchEventsForDate(datepickerState.selectedDate);
+    });
   }
 
   @override
@@ -42,10 +45,21 @@ class _CalendarBodyWidgetState extends ConsumerState<CalendarBodyWidget> {
       }
     });
 
+    // Listener für Overlay-Schließung
+    ref.listen<bool>(filterOverlayProvider, (previous, next) {
+      if (previous == true && next == false) {
+        // Overlay wurde geschlossen -> neu laden
+        final datepickerState = ref.read(datepickerNotifierProvider);
+        ref
+            .read(calendarEventsNotifierProvider.notifier)
+            .fetchEventsForDate(datepickerState.selectedDate);
+      }
+    });
+
     return Expanded(
       child: Stack(children: [
         Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(20.0),
           child: Container(
             alignment: Alignment.centerLeft,
             child: Column(
@@ -58,29 +72,39 @@ class _CalendarBodyWidgetState extends ConsumerState<CalendarBodyWidget> {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 20,
-                      fontFamily: GoogleFonts.spaceGrotesk().fontFamily,
                     ),
                   ),
                 ),
-                Flexible(
-                  child: ListView.builder(
-                    itemCount: state.events.length,
-                    itemBuilder: (context, index) {
-                      final event = state.events[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: CalendarEventCardWidget(
-                          calendarEventId:
-                              event.calendarEvent.calendarEventId ?? '',
-                          startDatetime: event.calendarEvent.startDatetime,
-                          endDatetime: event.calendarEvent.endDatetime,
-                          showName: event.show.title ?? '',
-                          showId: event.calendarEvent.showId ?? '',
-                        ),
-                      );
-                    },
+                if (state.events.isEmpty)
+                  Text(
+                    'Es wurden keine heutigen Events gefunden',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.builder(
+                      itemCount: state.events.length,
+                      itemBuilder: (context, index) {
+                        final event = state.events[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: CalendarEventCardWidget(
+                            calendarEventId:
+                                event.calendarEvent.calendarEventId ?? '',
+                            startDatetime: event.calendarEvent.startDatetime,
+                            endDatetime: event.calendarEvent.endDatetime,
+                            showName: event.show.title ?? '',
+                            showId: event.calendarEvent.showId ?? '',
+                            streamingService:
+                                event.season.streamingOption ?? '',
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -89,6 +113,8 @@ class _CalendarBodyWidgetState extends ConsumerState<CalendarBodyWidget> {
           onTapOutside: (tap) {
             ref.read(filterOverlayProvider.notifier).state = false;
             ref.read(filterOverlaySearchProvider.notifier).state = false;
+            ref.read(calendarEventsNotifierProvider.notifier);
+            //.fetchEventsForDate(datepickerState.selectedDate)
           },
           child: Stack(
             children: [
@@ -106,7 +132,6 @@ class _CalendarBodyWidgetState extends ConsumerState<CalendarBodyWidget> {
                     onClose: () {
                       ref.read(filterOverlaySearchProvider.notifier).state =
                           false;
-                      
                     },
                   ),
                 ),

@@ -1,4 +1,5 @@
 import 'package:logger/logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../domain/entities/show.dart';
 import '../../domain/repositories/show_repository.dart';
@@ -10,20 +11,27 @@ class ShowRepositoryImpl implements ShowRepository {
 
   ShowRepositoryImpl(this.dataSource);
 
+  Future<void> _checkAuthentication() async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      throw Exception('User is not authenticated');
+    }
+  }
+
   @override
   Future<List<Show>> search(String query) async {
     _logger.i('Starting search for shows with query: $query');
+
     try {
       final response = await dataSource.search(query);
       _logger.i('Received response: $response');
 
       final filteredResults = response
-        .map((json) => Show(
-          id: json['id'].toString(), 
-          title: json['title'], 
-          description: json['description']
-        ))
-        .toList();
+          .map((json) => Show(
+              id: json['id'].toString(),
+              title: json['title'],
+              description: json['description']))
+          .toList();
 
       _logger.i('Filtered results: $filteredResults');
       return filteredResults;
@@ -36,6 +44,7 @@ class ShowRepositoryImpl implements ShowRepository {
   @override
   Future<Show> getShowById(String id) async {
     _logger.i('Starting getById for show with id: $id');
+
     try {
       final response = await dataSource.getShowById(id);
       _logger.i('Received response: $response');

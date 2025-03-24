@@ -18,6 +18,7 @@ class SeasonDataSource {
               showId: season['show_id'],
               seasonNumber: season['season_number'],
               totalEpisodes: season['total_episodes'],
+              streamingOption: season['streaming_option'],
             ))
         .toList();
   }
@@ -37,6 +38,7 @@ class SeasonDataSource {
               showId: season['show_id'],
               seasonNumber: season['season_number'],
               totalEpisodes: season['total_episodes'],
+              streamingOption: season['streaming_option'],
             ))
         .toList();
   }

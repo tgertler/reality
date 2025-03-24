@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AttendeeCardWidget extends StatelessWidget {
   final String title; // Titel der Show
 
-  const AttendeeCardWidget({Key? key, required this.title}) : super(key: key);
+  const AttendeeCardWidget({super.key, required this.title});
 
   @override
   Widget build(BuildContext context){

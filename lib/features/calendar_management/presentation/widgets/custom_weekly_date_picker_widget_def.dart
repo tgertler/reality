@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/page_controller.dart';
 
-class CustomWeeklyDatePicker extends StatefulWidget {
-  CustomWeeklyDatePicker({
-    Key? key,
+class CustomWeeklyDatePicker extends ConsumerStatefulWidget {
+  const CustomWeeklyDatePicker({
+    super.key,
     required this.selectedDay,
     required this.changeDay,
     this.weekdayText = 'Week',
     this.weekdays = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     this.backgroundColor = const Color(0xFFFAFAFA),
     this.selectedDigitBackgroundColor = const Color(0xFF2A2859),
-    this.selectedDigitBorderColor = const Color(0x00000000), // Transparent color
+    this.selectedDigitBorderColor =
+        const Color(0x00000000), // Transparent color
     this.selectedDigitColor = const Color(0xFFFFFFFF),
     this.digitsColor = const Color(0xFF000000),
     this.weekdayTextColor = const Color(0xFF303030),
@@ -17,9 +20,8 @@ class CustomWeeklyDatePicker extends StatefulWidget {
     this.weeknumberColor = const Color(0xFFB2F5FE),
     this.weeknumberTextColor = const Color(0xFF000000),
     this.daysInWeek = 7,
-    this.controller,
-  })  : assert(weekdays.length == daysInWeek, "weekdays must be of length $daysInWeek"),
-        super(key: key);
+  }) : assert(weekdays.length == daysInWeek,
+            "weekdays must be of length $daysInWeek");
 
   final DateTime selectedDay;
   final Function(DateTime) changeDay;
@@ -35,14 +37,14 @@ class CustomWeeklyDatePicker extends StatefulWidget {
   final Color weeknumberColor;
   final Color weeknumberTextColor;
   final int daysInWeek;
-  final PageController? controller;
 
   @override
   _CustomWeeklyDatePickerState createState() => _CustomWeeklyDatePickerState();
 }
 
-class _CustomWeeklyDatePickerState extends State<CustomWeeklyDatePicker> {
-  late PageController _controller;
+class _CustomWeeklyDatePickerState
+    extends ConsumerState<CustomWeeklyDatePicker> {
+  late CustomPageController _customPageController;
   late DateTime _initialSelectedDay;
   late int _weeknumberInSwipe;
   final int _weekIndexOffset = 1000;
@@ -51,17 +53,9 @@ class _CustomWeeklyDatePickerState extends State<CustomWeeklyDatePicker> {
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller ?? PageController(initialPage: _weekIndexOffset);
+    _customPageController = ref.read(customPageControllerProvider);
     _initialSelectedDay = widget.selectedDay;
-    _weeknumberInSwipe = widget.selectedDay.weekOfYear;
-  }
-
-  @override
-  void dispose() {
-    if (widget.controller == null) {
-      _controller.dispose();
-    }
-    super.dispose();
+    _weeknumberInSwipe = DateTimeExtension(widget.selectedDay).weekOfYear;
   }
 
   @override
@@ -83,15 +77,16 @@ class _CustomWeeklyDatePickerState extends State<CustomWeeklyDatePicker> {
               : Container(),
           Expanded(
             child: PageView.builder(
-              controller: _controller,
+              controller: _customPageController.controller,
               onPageChanged: (int index) {
                 setState(() {
-                  _weeknumberInSwipe = _initialSelectedDay
-                      .addDays(7 * (index - _weekIndexOffset))
+                  _weeknumberInSwipe = DateTimeExtension(_initialSelectedDay
+                          .addDays(7 * (index - _weekIndexOffset)))
                       .weekOfYear;
                   DateTime firstDayOfWeek = _initialSelectedDay
                       .addDays(7 * (index - _weekIndexOffset))
-                      .subtract(Duration(days: _initialSelectedDay.weekday - 1));
+                      .subtract(
+                          Duration(days: _initialSelectedDay.weekday - 1));
                   widget.changeDay(firstDayOfWeek);
                 });
               },
@@ -135,23 +130,30 @@ class _CustomWeeklyDatePickerState extends State<CustomWeeklyDatePicker> {
               Padding(
                 padding: EdgeInsets.only(bottom: 4.0),
                 child: Text(
-                  '$weekday',
-                  style: TextStyle(fontSize: 12.0, color: widget.weekdayTextColor),
+                  weekday,
+                  style:
+                      TextStyle(fontSize: 12.0, color: widget.weekdayTextColor),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.all(1.0),
                 decoration: BoxDecoration(
-                    color: isTodaysDate ? widget.selectedDigitBorderColor : Colors.transparent,
+                    color: isTodaysDate
+                        ? widget.selectedDigitBorderColor
+                        : Colors.transparent,
                     shape: BoxShape.circle),
                 child: CircleAvatar(
-                  backgroundColor: isSelected ? widget.selectedDigitBackgroundColor : widget.backgroundColor,
+                  backgroundColor: isSelected
+                      ? widget.selectedDigitBackgroundColor
+                      : widget.backgroundColor,
                   radius: 14.0,
                   child: Text(
                     '${dateTime.day}',
                     style: TextStyle(
                         fontSize: 16.0,
-                        color: isSelected ? widget.selectedDigitColor : widget.digitsColor),
+                        color: isSelected
+                            ? widget.selectedDigitColor
+                            : widget.digitsColor),
                   ),
                 ),
               ),
@@ -165,16 +167,16 @@ class _CustomWeeklyDatePickerState extends State<CustomWeeklyDatePicker> {
 
 extension DateTimeExtension on DateTime {
   bool isSameDateAs(DateTime other) {
-    return this.year == other.year && this.month == other.month && this.day == other.day;
+    return year == other.year && month == other.month && day == other.day;
   }
 
   DateTime addDays(int days) {
-    return this.add(Duration(days: days));
+    return add(Duration(days: days));
   }
 
   int get weekOfYear {
-    final firstDayOfYear = DateTime(this.year, 1, 1);
-    final daysSinceFirstDay = this.difference(firstDayOfYear).inDays;
+    final firstDayOfYear = DateTime(year, 1, 1);
+    final daysSinceFirstDay = difference(firstDayOfYear).inDays;
     return (daysSinceFirstDay / 7).ceil();
   }
 }

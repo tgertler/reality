@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../providers/filter_active_provider.dart';
 
 class FilterOverlayContentWidget extends ConsumerWidget {
-  const FilterOverlayContentWidget({Key? key}) : super(key: key);
+  const FilterOverlayContentWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,21 +74,26 @@ class FilterOverlayContentWidget extends ConsumerWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding:
-                                          const EdgeInsets.only(left: 20.0),
-                                      child: Text(
-                                        show.title ?? 'No Title',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold),
+                                Flexible(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 20.0, right: 20.0),
+                                        child: Text(
+                                          show.title ?? 'No Title',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                                 IconButton(
                                   icon: Icon(Icons.close, color: Colors.white),
@@ -105,7 +110,7 @@ class FilterOverlayContentWidget extends ConsumerWidget {
                       ),
               ),
             ),
-            Row(
+/*             Row(
               children: [
                 Padding(
                   padding: const EdgeInsets.only(right: 12.0),
@@ -129,8 +134,8 @@ class FilterOverlayContentWidget extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
-            Flexible(
+            ), */
+            /* Flexible(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 23.0, top: 8.0),
                 child: activeFiltersState.activeAttendees.isEmpty
@@ -191,7 +196,7 @@ class FilterOverlayContentWidget extends ConsumerWidget {
                         },
                       ),
               ),
-            ),
+            ), */
           ],
         ),
       ),

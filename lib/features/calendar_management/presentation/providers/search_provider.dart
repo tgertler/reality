@@ -94,7 +94,7 @@ final attendeeRepositoryProvider = Provider<AttendeeRepository>((ref) {
 /// Provider für die Mock-Datenquelle
 final showDataSourceProvider = Provider<ShowDataSource>((ref) {
   final supabaseClient = ref.read(supabaseClientProvider);
-  return ShowDataSource(supabaseClient);
+  return ShowDataSource();
 });
 
 /// Provider für die Mock-Datenquelle

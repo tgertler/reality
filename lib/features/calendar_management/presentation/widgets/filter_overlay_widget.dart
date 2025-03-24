@@ -6,8 +6,7 @@ import 'package:frontend/features/calendar_management/presentation/widgets/filte
 class FilterOverlayWidget extends ConsumerWidget {
   final VoidCallback onClose;
 
-  const FilterOverlayWidget({Key? key, required this.onClose})
-      : super(key: key);
+  const FilterOverlayWidget({super.key, required this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

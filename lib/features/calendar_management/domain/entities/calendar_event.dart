@@ -1,6 +1,6 @@
 class CalendarEvent {
-  final String? calendarEventId;
-  final String? showId;
+  final String calendarEventId;
+  final String showId;
   final String? seasonId;
   final DateTime startDatetime;
   final DateTime endDatetime;

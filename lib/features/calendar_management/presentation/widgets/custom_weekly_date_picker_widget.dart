@@ -6,7 +6,7 @@ import '../providers/datepicker_provider.dart';
 import '../providers/filter_overlay_provider.dart';
 
 class CustomWeeklyDatePickerWidget extends ConsumerWidget {
-  const CustomWeeklyDatePickerWidget({Key? key}) : super(key: key);
+  const CustomWeeklyDatePickerWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,14 +19,14 @@ class CustomWeeklyDatePickerWidget extends ConsumerWidget {
       child: Opacity(
         opacity: isFilterOverlayVisible ? 0.3 : 1.0,
         child: CustomWeeklyDatePicker(
-          controller: pageController,
           enableWeeknumberText: false,
           weeknumberColor: Colors.white,
           weeknumberTextColor: Colors.white,
           backgroundColor: Colors.transparent,
           weekdayTextColor: const Color(0xFF8A8A8A),
           digitsColor: Colors.white,
-          selectedDigitBackgroundColor: const Color.fromARGB(255, 248, 144, 231),
+          selectedDigitBackgroundColor:
+              const Color.fromARGB(255, 248, 144, 231),
           selectedDay: datepickerState.selectedDate,
           changeDay: (value) =>
               ref.read(datepickerNotifierProvider.notifier).changeDate(value),

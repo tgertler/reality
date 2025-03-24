@@ -1,16 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShowDataSource {
-  final SupabaseClient supabaseClient;
-
-  ShowDataSource(this.supabaseClient);
+  final supabaseClient = Supabase.instance.client;
 
   Future<List<Map<String, dynamic>>> search(String query) async {
-    final response = await supabaseClient
-        .schema('show_management')
-        .from('shows')
-        .select()
-        .ilike('title', '%$query%');
+    final response =
+        await supabaseClient.from('shows').select().ilike('title', '%$query%');
 
     final results = response as List<dynamic>;
 
@@ -25,12 +20,8 @@ class ShowDataSource {
   }
 
   Future<Map<String, dynamic>?> getShowById(String id) async {
-    final response = await supabaseClient
-        .schema('show_management')
-        .from('shows')
-        .select()
-        .eq('id', id)
-        .single();
+    final response =
+        await supabaseClient.from('shows').select().eq('id', id).single();
 
     final show = response;
 

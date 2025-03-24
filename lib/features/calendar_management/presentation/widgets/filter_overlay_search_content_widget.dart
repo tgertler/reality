@@ -9,7 +9,7 @@ import '../providers/filter_active_provider.dart';
 import '../providers/search_provider.dart';
 
 class FilterOverlaySearchContentWidget extends ConsumerWidget {
-  const FilterOverlaySearchContentWidget({Key? key}) : super(key: key);
+  const FilterOverlaySearchContentWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

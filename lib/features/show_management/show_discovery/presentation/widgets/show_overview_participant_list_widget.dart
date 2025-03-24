@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ParticipantListWidget extends StatelessWidget {
-  const ParticipantListWidget({Key? key}) : super(key: key);
+  const ParticipantListWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

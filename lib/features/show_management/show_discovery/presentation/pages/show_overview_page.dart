@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/features/calendar_management/presentation/widgets/next_calendar_event_widget.dart';
+import 'package:frontend/features/calendar_management/presentation/widgets/upcoming_calendar_events_list_widget.dart';
 import '../providers/show_overview_provider.dart';
 import '../widgets/show_overview_season_list_widget.dart';
 import '../widgets/show_overview_title_widget.dart';
@@ -7,7 +9,7 @@ import '../widgets/show_overview_title_widget.dart';
 class ShowOverviewPage extends ConsumerStatefulWidget {
   final String showId;
 
-  const ShowOverviewPage({Key? key, required this.showId}) : super(key: key);
+  const ShowOverviewPage({super.key, required this.showId});
 
   @override
   _ShowOverviewPageState createState() => _ShowOverviewPageState();
@@ -37,22 +39,25 @@ class _ShowOverviewPageState extends ConsumerState<ShowOverviewPage>
     final show = ref.watch(showOverviewProvider);
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 37, 37, 37),
-      body: Column(
+      backgroundColor: const Color(0xFF121212),
+      body: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          ShowTitleWidget(title: show.title),
-          Container(
-            child: Padding(
+          ShowOverviewTitleWidget(title: show.title, showId: widget.showId),
+          if (show.description.isNotEmpty)
+            Padding(
               padding: const EdgeInsets.all(20.0),
-              child: Text(
-                  "Das Sommerhaus der Stars – Kampf der Promipaare (kurz SHDS) ist eine ursprünglich aus Israel stammende Reality-Show. In Deutschland wird sie seit 2016 bei RTL ausgestrahlt."),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(show.description),
+              ),
             ),
-          ),
           //CategoryWidget(),
           //SeasonSelectorWidget(),
-          Expanded(
-            child: SeasonListWidget(),
-          ),
+          NextCalendarEventWidget(showId: widget.showId),
+          UpcomingCalendarEventsListWidget(showId: widget.showId),
+          SeasonListWidget(showId: widget.showId),
+          const SizedBox(height: 24), // Abstand am Ende
         ],
       ),
     );
