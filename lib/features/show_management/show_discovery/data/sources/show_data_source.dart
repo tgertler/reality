@@ -1,9 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShowDataSource {
-  final SupabaseClient supabaseClient;
-
-  ShowDataSource(this.supabaseClient);
+  final supabaseClient = Supabase.instance.client;
 
   Future<List<Map<String, dynamic>>> search(String query) async {
     final response = await supabaseClient

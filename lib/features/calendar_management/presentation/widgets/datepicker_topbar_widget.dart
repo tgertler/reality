@@ -5,9 +5,10 @@ import 'package:intl/intl.dart';
 
 import '../providers/datepicker_provider.dart';
 import '../providers/filter_overlay_provider.dart';
+import '../providers/page_controller.dart';
 
 class DatepickerTopbarWidget extends ConsumerWidget {
-  const DatepickerTopbarWidget({Key? key}) : super(key: key);
+  const DatepickerTopbarWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,21 +46,39 @@ class DatepickerTopbarWidget extends ConsumerWidget {
                   ),
                 ),
               ),
-              Opacity(
-                opacity: isFilterOverlayVisible ? 0.3 : 1.0,
-                child: Expanded(
-                  flex: 3,
+              Expanded(
+                flex: 3,
+                child: Opacity(
+                  opacity: isFilterOverlayVisible ? 0.3 : 1.0,
                   child: Center(
-                    child: Text(DateFormat('MMMM', 'de_DE')
+                    child: Text(DateFormat('MMMM yyyy', 'de_DE')
                         .format(datepickerState.selectedDate)),
                   ),
                 ),
               ),
               Expanded(
                 flex: 1,
-                child: Container(
-                  child: Text(''),
-                ),
+                child:
+                    Container(), /* GestureDetector(
+                  onTap: () {
+                    ref
+                        .read(datepickerNotifierProvider.notifier)
+                        .changeDate(DateTime.now());
+                    // Hier wird die Methode jumpToToday aufgerufen
+                    final customPageController =
+                        ref.read(customPageControllerProvider);
+                    customPageController.jumpToToday();
+                  },
+                  child: Center(
+                    child: Text(
+                      'Heute',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ), */
               ),
             ],
           ),

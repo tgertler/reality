@@ -8,11 +8,11 @@ class FilterOverlaySearchAttendeeCard extends ConsumerWidget {
   final bool isToggled; // Zustand der Toggle-Bar
 
   const FilterOverlaySearchAttendeeCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.id,
     required this.isToggled,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

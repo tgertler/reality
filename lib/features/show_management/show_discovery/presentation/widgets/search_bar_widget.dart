@@ -5,7 +5,7 @@ import 'package:frontend/features/show_management/show_discovery/presentation/pr
 import 'package:go_router/go_router.dart';
 
 class MainSearchBarWidget extends ConsumerStatefulWidget {
-  const MainSearchBarWidget({Key? key}) : super(key: key);
+  const MainSearchBarWidget({super.key});
 
   @override
   _MainSearchBarWidgetState createState() => _MainSearchBarWidgetState();
@@ -38,6 +38,7 @@ class _MainSearchBarWidgetState extends ConsumerState<MainSearchBarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      color: Colors.white,
       child: TextField(
         autofocus: true,
         controller: textFieldController,
@@ -45,8 +46,10 @@ class _MainSearchBarWidgetState extends ConsumerState<MainSearchBarWidget> {
         onTap: () => {
           /* ref.read(mainSearchOverlayProvider.notifier).showOverlay(), */
         },
+        style: TextStyle(color: const Color(0xFF121212)),
         decoration: InputDecoration(
           hintText: 'Suchen',
+          hintStyle: TextStyle(color: Colors.black),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(0),
             borderSide: BorderSide(
@@ -55,6 +58,7 @@ class _MainSearchBarWidgetState extends ConsumerState<MainSearchBarWidget> {
             ),
           ),
           prefixIcon: Icon(Icons.search),
+          prefixIconColor: Colors.black,
           suffixIcon: Padding(
             padding: EdgeInsets.only(right: 10),
             child: SizedBox(
@@ -67,7 +71,7 @@ class _MainSearchBarWidgetState extends ConsumerState<MainSearchBarWidget> {
                   context.pop();
                   /* textFieldController.clear(); */
                 },
-                child: Icon(Icons.close, color: Colors.white),
+                child: Icon(Icons.close, color: Colors.black),
               ),
             ),
 /*             child: IconButton(
@@ -79,7 +83,7 @@ class _MainSearchBarWidgetState extends ConsumerState<MainSearchBarWidget> {
               },
             ), */
           ),
-          fillColor: Colors.black,
+          fillColor: Colors.white,
           filled: true,
           contentPadding: EdgeInsets.symmetric(horizontal: 20),
         ),

@@ -31,9 +31,9 @@ class AppView extends ConsumerWidget {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedFontSize: 0,
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF121212),
 /*         backgroundColor: Colors.black, */
-        showSelectedLabels: false, 
+        showSelectedLabels: false,
         showUnselectedLabels: false,
         currentIndex: navigationShell.currentIndex,
         onTap: _goBranch,
@@ -55,12 +55,6 @@ class AppView extends ConsumerWidget {
             index: 2,
             currentIndex: navigationShell.currentIndex,
             icon: Icons.star,
-          ),
-          _menuItem(
-            context,
-            index: 3,
-            currentIndex: navigationShell.currentIndex,
-            icon: Icons.person,
           ),
         ],
       ),
@@ -94,7 +88,8 @@ class AppView extends ConsumerWidget {
             icon,
             color: currentIndex == index
                 ? Colors.white // Kräftige Farbe für das ausgewählte Icon
-                : const Color.fromARGB(151, 255, 255, 255), // Kontrastreiche Farbe für nicht ausgewählte Icons
+                : const Color.fromARGB(151, 255, 255,
+                    255), // Kontrastreiche Farbe für nicht ausgewählte Icons
           ),
         ],
       ),

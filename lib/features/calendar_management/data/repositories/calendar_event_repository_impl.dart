@@ -38,16 +38,45 @@ class CalendarEventRepositoryImpl implements CalendarEventRepository {
   }
 
   @override
-  Future<List<CalendarEventWithShow>> getCalendarEventsWithShowsByDate(DateTime date, List<String> showIds, List<String> attendeeIds) async {
+  Future<List<CalendarEventWithShow>> getCalendarEventsWithShowsByDate(
+      DateTime date, List<String> showIds, List<String> attendeeIds) async {
     _logger.i('Fetching calendar events with shows for date: $date');
     try {
-      final eventsWithShows = dataSource.getCalendarEventsWithShowsByDate(date, showIds, attendeeIds);
-      _logger.i('Calendar events with shows for date $date received: $eventsWithShows');
+      final eventsWithShows = dataSource.getCalendarEventsWithShowsByDate(
+          date, showIds, attendeeIds);
+      _logger.i(
+          'Calendar events with shows for date $date received: $eventsWithShows');
       return eventsWithShows;
     } catch (e, stackTrace) {
-      _logger.e('Error fetching calendar events with shows for date $date', e, stackTrace);
+      _logger.e('Error fetching calendar events with shows for date $date', e,
+          stackTrace);
       rethrow;
     }
   }
 
+  @override
+  Future<List<CalendarEventWithShow>> getNextThreePremieres() async {
+    _logger.i('Fetching next three premieres');
+    try {
+      final response = await dataSource.getNextThreePremieres();
+      _logger.i('Received response: $response');
+      return response;
+    } catch (e, stackTrace) {
+      _logger.e('Error fetching next three premieres', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<CalendarEventWithShow>> getLastThreePremieres() async {
+    _logger.i('Fetching last three premieres');
+    try {
+      final response = await dataSource.getLastThreePremieres();
+      _logger.i('Received response: $response');
+      return response;
+    } catch (e, stackTrace) {
+      _logger.e('Error fetching last three premieres', e, stackTrace);
+      rethrow;
+    }
+  }
 }

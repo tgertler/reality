@@ -7,8 +7,7 @@ import 'package:frontend/features/calendar_management/presentation/widgets/filte
 class FilterOverlaySearchWidget extends ConsumerWidget {
   final VoidCallback onClose;
 
-  const FilterOverlaySearchWidget({Key? key, required this.onClose})
-      : super(key: key);
+  const FilterOverlaySearchWidget({super.key, required this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,7 +17,7 @@ class FilterOverlaySearchWidget extends ConsumerWidget {
       height: double.infinity,
       child: Column(
         children: [
-          Container(
+          SizedBox(
             height: 40,
             child: Row(
               children: [

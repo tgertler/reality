@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/search_provider.dart';
 
 class FilterOverlaySearchBarWidget extends ConsumerStatefulWidget {
-  const FilterOverlaySearchBarWidget({Key? key}) : super(key: key);
+  const FilterOverlaySearchBarWidget({super.key});
 
   @override
   _FilterOverlaySearchBarWidgetState createState() =>

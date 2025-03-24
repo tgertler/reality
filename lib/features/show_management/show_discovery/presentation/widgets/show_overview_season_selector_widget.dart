@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SeasonSelectorWidget extends StatelessWidget {
-  const SeasonSelectorWidget({Key? key}) : super(key: key);
+  const SeasonSelectorWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -9,10 +9,8 @@ class ShowDataSource {
   ShowDataSource(this.supabaseClient);
 
   Future<List<Show>> getShows() async {
-    final response = await supabaseClient
-        .schema('show_management')
-        .from('shows')
-        .select();
+    final response =
+        await supabaseClient.schema('show_management').from('shows').select();
 
     final results = response as List<dynamic>;
 
@@ -39,6 +37,7 @@ class ShowDataSource {
               showId: season['show_id'],
               seasonNumber: season['seasonNumber'],
               totalEpisodes: season['totalEpisodes'],
+              streamingOption: season['streaming_option'],
             ))
         .toList();
   }

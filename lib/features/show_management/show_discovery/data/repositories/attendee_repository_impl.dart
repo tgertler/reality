@@ -20,7 +20,7 @@ class AttendeeRepositoryImpl implements AttendeeRepository {
         .map((json) => Attendee(
           id: json['id'].toString(), 
           name: json['name'], 
-          bio: json['description']
+          bio: json['bio']
         ))
         .toList();
 
@@ -28,6 +28,27 @@ class AttendeeRepositoryImpl implements AttendeeRepository {
       return mappedResults;
     } catch (e, stackTrace) {
       _logger.e('Error during search', e, stackTrace);
+      rethrow;
+    }
+  }
+
+   @override
+  Future<Attendee> getAttendeeById(String id) async {
+    _logger.i('Starting getById for attendee with id: $id');
+    try {
+      final response = await dataSource.getShowById(id);
+      _logger.i('Received response: $response');
+
+      final attendee = Attendee(
+        id: response?['id'].toString() ?? '',
+        name: response?['name'] ?? '',
+        bio: response?['bio'] ?? '',
+      );
+
+      _logger.i('Fetched attendee: $attendee');
+      return attendee;
+    } catch (e, stackTrace) {
+      _logger.e('Error during getById', e, stackTrace);
       rethrow;
     }
   }

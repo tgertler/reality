@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/filter_overlay_search_provider.dart';
 
 class FilterOverlaySearchBarWidgetNoFunctionality extends ConsumerWidget {
-  const FilterOverlaySearchBarWidgetNoFunctionality({Key? key})
-      : super(key: key);
+  const FilterOverlaySearchBarWidgetNoFunctionality({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

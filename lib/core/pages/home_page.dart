@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/widgets/flexible_title_widget.dart';
 import 'package:frontend/core/widgets/home_streaming_content_widget.dart';
+import 'package:frontend/core/widgets/messages/trash_calendar_message_widget.dart';
+import 'package:frontend/features/user_management/presentation/providers/user_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:once/once.dart';
 
 import '../widgets/top_bar_widget.dart';
+import '../widgets/messages/welcome_message_widget.dart';
+import '../widgets/messages/not_logged_in_message_widget.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   int _selectedIndex = 0;
+  bool _isVisible = true;
 
   void _onTabTapped(int index) {
     setState(() {
@@ -19,56 +29,57 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(userNotifierProvider.notifier).loadUserData();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final userState = ref.watch(userNotifierProvider);
     return Scaffold(
       appBar: TopBarWidget(),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 20, top: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () => _onTabTapped(0),
-                  child: Text(
-                    'Streaming',
-                    style: TextStyle(
-                      fontWeight: _selectedIndex == 0
-                          ? FontWeight.w900
-                          : FontWeight.w900,
-                      color: _selectedIndex == 0
-                          ? Colors.white
-                          : const Color.fromARGB(88, 255, 255, 255),
-                      fontSize: 23,
-                      fontFamily: GoogleFonts.bricolageGrotesque().fontFamily,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => _onTabTapped(1),
-                  child: Text(
-                    'TV',
-                    style: TextStyle(
-                      fontWeight: _selectedIndex == 1
-                          ? FontWeight.w900
-                          : FontWeight.w900,
-                      color: _selectedIndex == 1
-                          ? Colors.white
-                          : const Color.fromARGB(88, 255, 255, 255),
-                      fontSize: 23,
-                      fontFamily: GoogleFonts.bricolageGrotesque().fontFamily,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          FlexibleTitleWidget(
+            textParts: [
+              FlexibleTitleTextPart(
+                text: 'UN',
+                color: const Color.fromARGB(255, 248, 196, 239),
+                isBold: true,
+              ),
+              FlexibleTitleTextPart(
+                text: 'SCRIPTED',
+                color: Colors.white,
+                isBold: true,
+              ),
+            ],
           ),
-          Flexible(
-            child: _selectedIndex == 0
-                ? HomeStreamingContentWidget()
-                : Center(child: Text('TV Content')),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  if (userState.user != null) const WelcomeMessageWidget(),
+                  if (userState.user == null) const NotLoggedInMessageWidget(),
+                  OnceWidget.showHourly(
+                    "weekWidget",
+                    builder: () {
+                      return TrashCalendarWidget(
+                        onClose: () {
+                          setState(() {
+                            _isVisible = false;
+                          });
+                        },
+                      );
+                    },
+                    fallback: () => Container(),
+                  ),
+                  HomeStreamingContentWidget()
+                ],
+              ),
+            ),
           ),
         ],
       ),

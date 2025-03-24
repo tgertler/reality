@@ -1,17 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/features/show_management/show_discovery/presentation/providers/seasons_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'season_list_item_widget.dart';
 
-class SeasonListWidget extends StatelessWidget {
-  const SeasonListWidget({Key? key}) : super(key: key);
+class SeasonListWidget extends ConsumerStatefulWidget {
+  final String showId;
+
+  const SeasonListWidget({super.key, required this.showId});
+
+  @override
+  _SeasonListWidgetState createState() => _SeasonListWidgetState();
+}
+
+class _SeasonListWidgetState extends ConsumerState<SeasonListWidget> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notifier = ref.read(seasonsNotifierProvider.notifier);
+      print('Calling getSeasonsByShow with showId: ${widget.showId}');
+      notifier.getSeasonsByShow(widget.showId).then((_) {
+        print('getSeasonsByShow completed');
+      }).catchError((error) {
+        print('Error in getSeasonsByShow: $error');
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
+    final seasonState = ref.watch(seasonsNotifierProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0),
+      child: Column(
+        children: [
+          Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 37, 37, 37),
               border: Border(
                 bottom: BorderSide(
                   color: Colors.black,
@@ -30,90 +58,23 @@ class SeasonListWidget extends StatelessWidget {
                   fontFamily: GoogleFonts.bricolageGrotesque().fontFamily,
                 ),
               ),
-            )),
-        Expanded(
-          child: ListView.builder(
-            itemCount: 4,
-            itemBuilder: (context, index) {
-              return Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: index % 2 == 0
-                      ? const Color.fromARGB(255, 30, 30, 30)
-                      : const Color.fromARGB(255, 37, 37,
-                          37), // Unterschiedliche Farben für jede zweite Zeile
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.grey[800]!,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 20.0),
-                      child: Flexible(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Season ${index + 1}',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 10.0),
-                        child: Container(
-                          child: Icon(Icons.fiber_manual_record,
-                              size: 5,
-                              color: const Color.fromARGB(255, 248, 144, 231)),
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 10.0),
-                        child: Container(
-                          child: Text('20:30'),
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: Container(
-                          child: Icon(Icons.fiber_manual_record,
-                              size: 5,
-                              color: const Color.fromARGB(255, 248, 144, 231)),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        child: Icon(Icons.tv),
-                      ),
-                    ),                    
-                    Spacer(),
-                    Container(
-                      width: 20,
-                      child: Icon(Icons.chevron_right),
-                    ),
-                  ],
-                ),
-              );
-            },
+            ),
           ),
-        ),
-      ],
+          Expanded(
+            child: seasonState.isLoading
+                ? Center(child: CircularProgressIndicator())
+                : seasonState.errorMessage.isNotEmpty
+                    ? Center(child: Text('Error: ${seasonState.errorMessage}'))
+                    : ListView.builder(
+                        itemCount: seasonState.seasons.length,
+                        itemBuilder: (context, index) {
+                          final season = seasonState.seasons[index];
+                          return SeasonListItemWidget(season: season);
+                        },
+                      ),
+          ),
+        ],
+      ),
     );
   }
 }

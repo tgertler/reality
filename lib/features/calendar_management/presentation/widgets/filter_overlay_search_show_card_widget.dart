@@ -10,15 +10,16 @@ class FilterOverlaySearchShowCard extends ConsumerWidget {
   final bool isToggled; // Zustand der Toggle-Bar
 
   const FilterOverlaySearchShowCard(
-      {Key? key, required this.title, required this.id, required this.isToggled})
-      : super(key: key);
+      {super.key,
+      required this.title,
+      required this.id,
+      required this.isToggled});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
       child: Container(
-        color: Colors.red,
         width: double.infinity,
         height: 60,
         child: Row(
@@ -53,13 +54,14 @@ class FilterOverlaySearchShowCard extends ConsumerWidget {
                         children: [
                           Text(
                             title,
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 17),
+                            style: TextStyle(color: Colors.white, fontSize: 17),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             "Show",
-                            style: TextStyle(
-                                color: Colors.white30, fontSize: 14),
+                            style:
+                                TextStyle(color: Colors.white30, fontSize: 14),
                           ),
                         ],
                       ),
@@ -70,9 +72,13 @@ class FilterOverlaySearchShowCard extends ConsumerWidget {
                         value: isToggled,
                         onChanged: (bool value) {
                           if (value) {
-                            ref.read(activeFiltersProvider.notifier).addShow(id, title);
+                            ref
+                                .read(activeFiltersProvider.notifier)
+                                .addShow(id, title);
                           } else {
-                            ref.read(activeFiltersProvider.notifier).removeShow(id);
+                            ref
+                                .read(activeFiltersProvider.notifier)
+                                .removeShow(id);
                           }
                         },
                         activeColor: Colors.green,

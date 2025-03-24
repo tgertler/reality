@@ -83,5 +83,5 @@ final showRepositoryProvider = Provider<ShowRepository>((ref) {
 final showDataSourceProvider = Provider<ShowDataSource>((ref) {
   final supabaseClient = ref.read(supabaseClientProvider);
 
-  return ShowDataSource(supabaseClient);
+  return ShowDataSource();
 });

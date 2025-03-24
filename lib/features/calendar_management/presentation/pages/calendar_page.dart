@@ -16,47 +16,38 @@ class CalendarPage extends ConsumerWidget {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-            Container(
-                padding: const EdgeInsets.only(top: 40),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 37, 37, 37),
-                ),
-                child: Row(
+                    Container(
+            height: 45,
+            width: double.infinity,
+            color: const Color.fromARGB(255, 248, 144, 231),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 10.0),
+              child: RichText(
+                text: TextSpan(
                   children: [
-                    Expanded(
-                      flex: 9,
-                      child: Container(
-                        color: const Color.fromARGB(255, 44, 44, 44),
-                        //color: const Color.fromARGB(29, 248, 144, 231),
-                        //color: const Color.fromARGB(174, 7, 103, 103),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 10.0),
-                          child: Transform.translate(
-                            offset: Offset(0, -16),
-                            child: Text(
-                              'Mein Trash-Kalender',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 23,
-                                fontWeight: FontWeight.w900,
-                                fontFamily:
-                                    GoogleFonts.bricolageGrotesque().fontFamily,
-                              ),
-                            ),
-                          ),
-                        ),
+                    TextSpan(
+                      text: 'TRASH',
+                      style: TextStyle(
+                        color: const Color.fromARGB(255, 248, 196, 239),
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: GoogleFonts.oswald().fontFamily,
                       ),
                     ),
-                    Expanded(
-                      flex: 4,
-                      child: Container(),
-                    )
+                    TextSpan(
+                      text: 'CALENDAR',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: GoogleFonts.oswald().fontFamily,
+                      ),
+                    ),
                   ],
-                )),
-          ]),
+                ),
+              ),
+            ),
+          ),
           Padding(
               padding: const EdgeInsets.only(bottom: 5.0, top: 20),
               child: DatepickerTopbarWidget()),

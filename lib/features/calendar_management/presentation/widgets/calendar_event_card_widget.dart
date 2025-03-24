@@ -10,15 +10,33 @@ class CalendarEventCardWidget extends StatelessWidget {
   final DateTime endDatetime;
   final String showName;
   final String showId;
+  final String streamingService; // Hinzugefügt
 
   const CalendarEventCardWidget({
-    Key? key,
+    super.key,
     required this.calendarEventId,
     required this.startDatetime,
     required this.endDatetime,
     required this.showName,
     required this.showId,
-  }) : super(key: key);
+    required this.streamingService, // Hinzugefügt
+  });
+
+  String _getStreamingServiceLogo(String service) {
+    switch (service.toLowerCase()) {
+      case 'netflix':
+        return 'logos/netflix.svg';
+      case 'rtl+':
+        return 'logos/rtl+.svg';
+      case 'prime':
+        return 'logos/prime.svg';
+      case 'joyn':
+        return 'logos/joyn.svg';
+      // Weitere Streaming-Dienste hier hinzufügen
+      default:
+        return 'logos/default.svg'; // Standard-Logo
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +45,7 @@ class CalendarEventCardWidget extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        context.go('${AppRoutes.calendar}${AppRoutes.showOverview}/$showId');
+        context.push('${AppRoutes.showOverview}/$showId');
       },
       child: Container(
         width: double.infinity,
@@ -50,7 +68,7 @@ class CalendarEventCardWidget extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${DateFormat('hh:mm', 'de_DE').format(startDatetime)}',
+                      DateFormat('HH:mm', 'de_DE').format(startDatetime),
                       style: TextStyle(fontSize: 12),
                     ),
                     Text(
@@ -58,7 +76,7 @@ class CalendarEventCardWidget extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: const Color.fromARGB(255, 168, 168, 168),
-                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -79,16 +97,27 @@ class CalendarEventCardWidget extends StatelessWidget {
               child: Container(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 0.0),
-                  child: Text(showName),
+                  child: Text(
+                    showName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ),
             Expanded(
               flex: 14,
-              child: SvgPicture.asset(
-                  'rtl-seeklogo.svg', // Pfad zu Ihrem SVG
-                  allowDrawingOutsideViewBox: true,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24.0, bottom: 24.0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SvgPicture.asset(
+                    _getStreamingServiceLogo(streamingService), // Angepasst
+                    allowDrawingOutsideViewBox: true,
+                    fit: BoxFit.contain,
+                  ),
                 ),
+              ),
             ),
           ],
         ),
