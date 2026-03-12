@@ -61,8 +61,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+<<<<<<< HEAD
                   /* if (userState.user != null)  */ const WelcomeMessageWidget(),
                   //if (userState.user == null) const NotLoggedInMessageWidget(),
+=======
+                  if (userState.user != null) const WelcomeMessageWidget(),
+                  if (userState.user == null) const NotLoggedInMessageWidget(),
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                   OnceWidget.showHourly(
                     "weekWidget",
                     builder: () {

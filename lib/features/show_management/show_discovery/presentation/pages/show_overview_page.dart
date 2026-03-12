@@ -40,6 +40,7 @@ class _ShowOverviewPageState extends ConsumerState<ShowOverviewPage>
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+<<<<<<< HEAD
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -58,6 +59,25 @@ class _ShowOverviewPageState extends ConsumerState<ShowOverviewPage>
           UpcomingCalendarEventsListWidget(showId: widget.showId),
           SeasonListWidget(showId: widget.showId),
           const SizedBox(height: 24), // Abstand am Ende
+=======
+      body: Column(
+        children: [
+          ShowOverviewTitleWidget(title: show.title, showId: widget.showId),
+          show.description.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(show.description),
+                  ),
+                )
+              : Container(),
+          //CategoryWidget(),
+          //SeasonSelectorWidget(),
+          Expanded(
+            child: SeasonListWidget(showId: widget.showId),
+          ),
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
         ],
       ),
     );

@@ -54,8 +54,13 @@ class FilterOverlaySearchShowCard extends ConsumerWidget {
                         children: [
                           Text(
                             title,
+<<<<<<< HEAD
                             style: TextStyle(color: Colors.white, fontSize: 15),
                             maxLines: 1,
+=======
+                            style: TextStyle(color: Colors.white, fontSize: 17),
+                            maxLines: 2,
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(

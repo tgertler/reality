@@ -15,12 +15,16 @@ class HomeStreamingContentWidget extends ConsumerStatefulWidget {
 
 class _HomeStreamingContentWidgetState
     extends ConsumerState<HomeStreamingContentWidget> {
+<<<<<<< HEAD
   // ZWEI separate PageController!
   final PageController _lastReleasesPageController = PageController(
     viewportFraction: 0.48,
   );
 
   final PageController _nextReleasesPageController = PageController(
+=======
+  final PageController _pageController = PageController(
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
     viewportFraction: 0.48,
   );
 
@@ -28,19 +32,36 @@ class _HomeStreamingContentWidgetState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+<<<<<<< HEAD
       ref.read(homeEventsNotifierProvider.notifier).loadHomeData();
+=======
+      ref
+          .read(calendarEventsNotifierProvider.notifier)
+          .fetchEventsReleasingToday();
+      ref
+          .read(calendarEventsNotifierProvider.notifier)
+          .fetchNextThreePremieres();
+      ref
+          .read(calendarEventsNotifierProvider.notifier)
+          .fetchLastThreePremieres();
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
     });
   }
 
   @override
   void dispose() {
+<<<<<<< HEAD
     _lastReleasesPageController.dispose();
     _nextReleasesPageController.dispose(); // Beide disposen!
+=======
+    _pageController.dispose();
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     final showsReleasingTodayState = ref.watch(homeEventsNotifierProvider);
     final nextThreePremieresState = showsReleasingTodayState.nextPremieres;
     final lastThreeReleasesState = showsReleasingTodayState.lastPremieres;
@@ -59,6 +80,12 @@ class _HomeStreamingContentWidgetState
     }
     print('==========================');
 
+=======
+    final showsReleasingTodayState = ref.watch(calendarEventsNotifierProvider);
+    final nextThreePremieresState = showsReleasingTodayState.nextPremieres;
+    final lastThreeReleasesState = showsReleasingTodayState.lastPremieres;
+
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
     return Container(
       padding: const EdgeInsets.only(
         left: 20.0,
@@ -148,7 +175,11 @@ class _HomeStreamingContentWidgetState
                           child: Container(
                             height: 1.5,
                             width: double.infinity,
+<<<<<<< HEAD
                             color: const Color.fromARGB(255, 41, 41, 41),
+=======
+                            color: const Color.fromARGB(255, 114, 114, 114),
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                           ),
                         ),
                       ),
@@ -164,8 +195,12 @@ class _HomeStreamingContentWidgetState
                           height: 135,
                           child: NewReleasesWidget(
                             events: lastThreeReleasesState,
+<<<<<<< HEAD
                             pageController:
                                 _lastReleasesPageController, // Eigener Controller
+=======
+                            pageController: _pageController,
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                           ),
                         ),
                   const SizedBox(height: 20),
@@ -184,7 +219,11 @@ class _HomeStreamingContentWidgetState
                           child: Container(
                             height: 1.5,
                             width: double.infinity,
+<<<<<<< HEAD
                             color: const Color.fromARGB(255, 41, 41, 41),
+=======
+                            color: const Color.fromARGB(255, 114, 114, 114),
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                           ),
                         ),
                       ),
@@ -200,8 +239,12 @@ class _HomeStreamingContentWidgetState
                           height: 135,
                           child: NewReleasesWidget(
                             events: nextThreePremieresState,
+<<<<<<< HEAD
                             pageController:
                                 _nextReleasesPageController, // Eigener Controller
+=======
+                            pageController: _pageController,
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                           ),
                         ),
                 ],

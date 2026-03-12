@@ -18,6 +18,10 @@ class MainSearchShowCard extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
         child: Container(
+<<<<<<< HEAD
+=======
+          color: Colors.red,
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
           width: double.infinity,
           height: 60,
           child: Row(
@@ -54,8 +58,11 @@ class MainSearchShowCard extends ConsumerWidget {
                               title,
                               style:
                                   TextStyle(color: Colors.white, fontSize: 17),
+<<<<<<< HEAD
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
+=======
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                             ),
                             Text(
                               "Show",

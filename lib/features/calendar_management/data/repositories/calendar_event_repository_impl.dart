@@ -79,6 +79,7 @@ class CalendarEventRepositoryImpl implements CalendarEventRepository {
       rethrow;
     }
   }
+<<<<<<< HEAD
 
   @override
   Future<List<CalendarEventWithShow>> getUpcomingCalendarEventsForShow(
@@ -109,4 +110,6 @@ class CalendarEventRepositoryImpl implements CalendarEventRepository {
       rethrow;
     }
   }
+=======
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
 }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/show_management/show_discovery/presentation/providers/seasons_provider.dart';
+<<<<<<< HEAD
+=======
+import 'package:google_fonts/google_fonts.dart';
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
 import 'season_list_item_widget.dart';
 
 class SeasonListWidget extends ConsumerStatefulWidget {
@@ -13,6 +17,7 @@ class SeasonListWidget extends ConsumerStatefulWidget {
 }
 
 class _SeasonListWidgetState extends ConsumerState<SeasonListWidget> {
+<<<<<<< HEAD
   bool _isExpanded = false;
 
   @override
@@ -35,11 +40,28 @@ class _SeasonListWidgetState extends ConsumerState<SeasonListWidget> {
           .getSeasonsByShow(widget.showId);
     }
   }
+=======
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notifier = ref.read(seasonsNotifierProvider.notifier);
+      print('Calling getSeasonsByShow with showId: ${widget.showId}');
+      notifier.getSeasonsByShow(widget.showId).then((_) {
+        print('getSeasonsByShow completed');
+      }).catchError((error) {
+        print('Error in getSeasonsByShow: $error');
+      });
+    });
+  }
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
 
   @override
   Widget build(BuildContext context) {
     final seasonState = ref.watch(seasonsNotifierProvider);
 
+<<<<<<< HEAD
     if (seasonState.isLoading && seasonState.seasons.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -128,10 +150,36 @@ class _SeasonListWidgetState extends ConsumerState<SeasonListWidget> {
                       ),
                     ),
                   ],
+=======
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.black,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 20.0, bottom: 5),
+              child: Text(
+                'Staffeln',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: GoogleFonts.bricolageGrotesque().fontFamily,
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                 ),
               ),
             ),
           ),
+<<<<<<< HEAD
           // Collapsible Content
           AnimatedCrossFade(
             firstChild: const SizedBox(width: double.infinity),
@@ -185,6 +233,20 @@ class _SeasonListWidgetState extends ConsumerState<SeasonListWidget> {
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
+=======
+          Expanded(
+            child: seasonState.isLoading
+                ? Center(child: CircularProgressIndicator())
+                : seasonState.errorMessage.isNotEmpty
+                    ? Center(child: Text('Error: ${seasonState.errorMessage}'))
+                    : ListView.builder(
+                        itemCount: seasonState.seasons.length,
+                        itemBuilder: (context, index) {
+                          final season = seasonState.seasons[index];
+                          return SeasonListItemWidget(season: season);
+                        },
+                      ),
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
           ),
         ],
       ),

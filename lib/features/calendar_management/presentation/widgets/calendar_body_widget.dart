@@ -113,8 +113,14 @@ class _CalendarBodyWidgetState extends ConsumerState<CalendarBodyWidget> {
           onTapOutside: (tap) {
             ref.read(filterOverlayProvider.notifier).state = false;
             ref.read(filterOverlaySearchProvider.notifier).state = false;
+<<<<<<< HEAD
             ref.read(calendarEventsNotifierProvider.notifier);
             //.fetchEventsForDate(datepickerState.selectedDate)
+=======
+            ref
+                .read(calendarEventsNotifierProvider.notifier)
+                .fetchEventsForDate(datepickerState.selectedDate);
+>>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
           },
           child: Stack(
             children: [
