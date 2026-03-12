@@ -18,10 +18,6 @@ class CalendarEventsState {
   final List<CalendarEventWithShow> events;
   final List<CalendarEventWithShow> nextPremieres;
   final List<CalendarEventWithShow> lastPremieres;
-<<<<<<< HEAD
-
-=======
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
   final String errorMessage;
 
   CalendarEventsState({
@@ -37,11 +33,8 @@ class CalendarEventsState {
     List<CalendarEventWithShow>? events,
     List<CalendarEventWithShow>? nextPremieres,
     List<CalendarEventWithShow>? lastPremieres,
-<<<<<<< HEAD
     List<CalendarEventWithShow>? upcomingEvents,
     CalendarEventWithShow? nextEvent,
-=======
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
     String? errorMessage,
   }) {
     return CalendarEventsState(

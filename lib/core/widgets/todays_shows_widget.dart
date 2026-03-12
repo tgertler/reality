@@ -25,11 +25,7 @@ class TodayShowsWidget extends StatelessWidget {
           height: 40,
           child: Row(
             children: [
-<<<<<<< HEAD
               /* Flexible(
-=======
-              Flexible(
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                 flex: 4,
                 child: Center(
                   child: Text(
@@ -38,7 +34,6 @@ class TodayShowsWidget extends StatelessWidget {
                     style: TextStyle(color: Colors.grey),
                   ),
                 ),
-<<<<<<< HEAD
               ), */
               Expanded(
                 child: Container(
@@ -48,13 +43,10 @@ class TodayShowsWidget extends StatelessWidget {
                     color: const Color.fromARGB(255, 213, 245, 245),
                   ),
                 ),
-=======
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
               ),
               const SizedBox(width: 10),
               Expanded(
                 flex: 20,
-<<<<<<< HEAD
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
@@ -65,40 +57,16 @@ class TodayShowsWidget extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.left,
-=======
-                child: Center(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      event.show.title ?? 'Unknown Title',
-                      style: TextStyle(fontSize: 16),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                   ),
                 ),
               ),
               Flexible(
                 flex: 4,
-<<<<<<< HEAD
                 child: SvgPicture.asset(
                   getStreamingServiceLogo(
                       event.season.streamingOption ?? 'default'),
                   allowDrawingOutsideViewBox: true,
                   fit: BoxFit.contain,
-=======
-                child: Center(
-                  child: SvgPicture.asset(
-                    getStreamingServiceLogo(
-                        event.season.streamingOption ?? 'default'),
-                    allowDrawingOutsideViewBox: true,
-                    fit: BoxFit.contain,
-                    color: const Color.fromARGB(255, 129, 129, 129),
-                  ),
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                 ),
               ),
             ],

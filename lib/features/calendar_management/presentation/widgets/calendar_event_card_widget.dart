@@ -22,25 +22,6 @@ class CalendarEventCardWidget extends StatelessWidget {
     required this.showId,
     required this.streamingService, // Hinzugefügt
   });
-<<<<<<< HEAD
-=======
-
-  String _getStreamingServiceLogo(String service) {
-    switch (service.toLowerCase()) {
-      case 'netflix':
-        return 'logos/netflix.svg';
-      case 'rtl+':
-        return 'logos/rtl+.svg';
-      case 'prime':
-        return 'logos/prime.svg';
-      case 'joyn':
-        return 'logos/joyn.svg';
-      // Weitere Streaming-Dienste hier hinzufügen
-      default:
-        return 'logos/default.svg'; // Standard-Logo
-    }
-  }
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
 
   @override
   Widget build(BuildContext context) {
@@ -100,11 +81,7 @@ class CalendarEventCardWidget extends StatelessWidget {
               flex: 24,
               child: Container(
                 child: Padding(
-<<<<<<< HEAD
                   padding: const EdgeInsets.only(left: 20.0),
-=======
-                  padding: const EdgeInsets.only(left: 0.0),
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                   child: Text(
                     showName,
                     maxLines: 2,
@@ -116,19 +93,11 @@ class CalendarEventCardWidget extends StatelessWidget {
             Expanded(
               flex: 14,
               child: Padding(
-<<<<<<< HEAD
                 padding: const EdgeInsets.only(
                     top: 20.0, bottom: 20.0, left: 30, right: 10),
                 child: Center(
                   child: SvgPicture.asset(
                     getStreamingServiceLogo(streamingService), // Angepasst
-=======
-                padding: const EdgeInsets.only(top: 24.0, bottom: 24.0),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: SvgPicture.asset(
-                    _getStreamingServiceLogo(streamingService), // Angepasst
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                     allowDrawingOutsideViewBox: true,
                     fit: BoxFit.contain,
                   ),

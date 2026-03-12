@@ -56,11 +56,7 @@ class NewReleasesWidget extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-<<<<<<< HEAD
                             DateFormat('dd.MM.yyyy').format(
-=======
-                            DateFormat('dd.MM.yyyy, HH:mm').format(
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                                 event.calendarEvent.startDatetime.toLocal()),
                             style: TextStyle(color: Colors.grey),
                           ),
@@ -68,7 +64,6 @@ class NewReleasesWidget extends StatelessWidget {
                           SizedBox(
                             height: 15,
                             width: 50,
-<<<<<<< HEAD
                             child: Center(
                               child: SvgPicture.asset(
                                 getStreamingServiceLogo(
@@ -77,14 +72,6 @@ class NewReleasesWidget extends StatelessWidget {
                                 allowDrawingOutsideViewBox: true,
                                 fit: BoxFit.contain,
                               ),
-=======
-                            child: SvgPicture.asset(
-                              getStreamingServiceLogo(
-                                  event.season.streamingOption ?? 'default'),
-                              allowDrawingOutsideViewBox: true,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.centerLeft,
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                             ),
                           ),
                         ],

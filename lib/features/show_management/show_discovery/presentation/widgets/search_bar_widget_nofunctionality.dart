@@ -41,11 +41,7 @@ class MainSearchBarWidgetNofunctionality extends ConsumerWidget {
                   width: 30.0,
                 ),
               ),
-<<<<<<< HEAD
               /* Padding(
-=======
-              Padding(
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
                 padding: const EdgeInsets.only(right: 5.0),
                 child: IconButton(
                   iconSize: 28,
@@ -56,11 +52,7 @@ class MainSearchBarWidgetNofunctionality extends ConsumerWidget {
                     context.push(AppRoutes.user);
                   },
                 ),
-<<<<<<< HEAD
               ), */
-=======
-              ),
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
             ],
           ),
           fillColor: const Color(0xFF121212),

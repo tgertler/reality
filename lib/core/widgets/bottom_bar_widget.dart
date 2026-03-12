@@ -55,11 +55,7 @@ class AppView extends ConsumerWidget {
             index: 2,
             currentIndex: navigationShell.currentIndex,
             icon: Icons.star,
-<<<<<<< HEAD
           ), */
-=======
-          ),
->>>>>>> 2275eb12469187351262114ef8e8ec75d1ca9801
         ],
       ),
     );
