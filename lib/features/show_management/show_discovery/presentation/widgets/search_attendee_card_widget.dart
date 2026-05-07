@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/utils/router.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MainSearchAttendeeCard extends ConsumerWidget {
   final String title; // Name des Attendees
@@ -16,61 +17,55 @@ class MainSearchAttendeeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onTap: () => context.push('${AppRoutes.attendeeOverview}/${id}'),
+      onTap: () => context.push('${AppRoutes.attendeeOverview}/$id'),
       child: Padding(
-        padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
+        padding: const EdgeInsets.only(top: 8, left: 10, right: 10),
         child: Container(
-          color: Colors.red,
-          width: double.infinity,
-          height: 60,
+          color: const Color(0xFF1A1A1A),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               Container(
-                height: double.infinity,
-                width: 6,
-                color: const Color.fromARGB(255, 105, 105, 105),
+                width: 4,
+                height: 46,
+                color: Colors.white38,
               ),
-              SizedBox(
-                width: 60,
-                height: 60,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                  ),
-                  child: Center(
-                    child: Icon(Icons.person, size: 40, color: Colors.white),
-                  ),
-                ),
+              const SizedBox(width: 12),
+              Container(
+                width: 42,
+                height: 42,
+                color: Colors.black,
+                child: const Icon(Icons.person_rounded, size: 22, color: Colors.white),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  color: const Color.fromARGB(255, 26, 26, 26),
-                  padding: const EdgeInsets.only(left: 10.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              title,
-                              style: TextStyle(color: Colors.white, fontSize: 17),
-                            ),
-                            Text(
-                              "Teilnehmer",
-                              style:
-                                  TextStyle(color: Colors.white30, fontSize: 14),
-                            ),
-                          ],
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.montserrat(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
-                    
-                    ],
-                  ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Teilnehmer',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const Icon(Icons.chevron_right, color: Colors.white24, size: 18),
             ],
           ),
         ),

@@ -7,19 +7,21 @@ import '../providers/filter_active_provider.dart';
 class FilterOverlaySearchShowCard extends ConsumerWidget {
   final String title; // Titel der Show
   final String id; // Titel der Show
+  final String? genre;
   final bool isToggled; // Zustand der Toggle-Bar
 
   const FilterOverlaySearchShowCard(
       {super.key,
       required this.title,
       required this.id,
+      this.genre,
       required this.isToggled});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
-      child: Container(
+      child: SizedBox(
         width: double.infinity,
         height: 60,
         child: Row(
@@ -59,7 +61,9 @@ class FilterOverlaySearchShowCard extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            "Show",
+                            (genre?.trim().isNotEmpty ?? false)
+                                ? "Show · ${genre!.trim()}"
+                                : "Show",
                             style:
                                 TextStyle(color: Colors.white30, fontSize: 14),
                           ),
@@ -74,14 +78,14 @@ class FilterOverlaySearchShowCard extends ConsumerWidget {
                           if (value) {
                             ref
                                 .read(activeFiltersProvider.notifier)
-                                .addShow(id, title);
+                              .addShow(id, title, genre: genre);
                           } else {
                             ref
                                 .read(activeFiltersProvider.notifier)
                                 .removeShow(id);
                           }
                         },
-                        activeColor: Colors.green,
+                        activeThumbColor: Colors.green,
                         inactiveThumbColor: Colors.grey,
                         inactiveTrackColor: Colors.white30,
                       ),

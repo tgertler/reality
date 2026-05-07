@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:frontend/features/bingo_management/presentation/widgets/bingo_floating_button.dart';
+import 'package:frontend/features/bingo_management/presentation/widgets/bingo_overlay_widget.dart';
 
 import '../../features/show_management/show_discovery/presentation/pages/search_page.dart';
 import '../../features/show_management/show_discovery/presentation/providers/search_overlay_provider.dart';
@@ -21,43 +23,90 @@ class AppView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isOverlayVisible = ref.watch(mainSearchOverlayProvider);
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          navigationShell,
-          if (isOverlayVisible) MainSearchOverlay(),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 0,
-        backgroundColor: const Color(0xFF121212),
+    return Stack(
+      children: [
+        Scaffold(
+          body: Stack(
+            children: [
+              navigationShell,
+              if (isOverlayVisible) MainSearchOverlay(),
+            ],
+          ),
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                selectedFontSize: 0,
+                backgroundColor: const Color(0xFF121212),
 /*         backgroundColor: Colors.black, */
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        currentIndex: navigationShell.currentIndex,
-        onTap: _goBranch,
-        items: [
-          _menuItem(
-            context,
-            index: 0,
-            currentIndex: navigationShell.currentIndex,
-            icon: Icons.home,
+                showSelectedLabels: false,
+                showUnselectedLabels: false,
+                currentIndex: navigationShell.currentIndex,
+                onTap: _goBranch,
+                items: [
+                  _menuItem(
+                    context,
+                    index: 0,
+                    currentIndex: navigationShell.currentIndex,
+                    icon: Icons.rss_feed,
+                  ),
+                  _menuItem(
+                    context,
+                    index: 1,
+                    currentIndex: navigationShell.currentIndex,
+                    icon: Icons.home,
+                  ),
+                  _menuItem(
+                    context,
+                    index: 2,
+                    currentIndex: navigationShell.currentIndex,
+                    icon: Icons.calendar_month,
+                  ),
+                  _menuItem(
+                    context,
+                    index: 3,
+                    currentIndex: navigationShell.currentIndex,
+                    icon: Icons.star,
+                  ),
+                ],
+              ),
+              // Padding(
+              //   padding: const EdgeInsets.only(bottom: 12),
+              //   child: Container(
+              //     color: const Color(0xFF121212),
+              //       width: double.infinity,
+              //       padding: const EdgeInsets.only(top: 0, bottom: 4),
+              //       child: Transform.translate(
+              //         offset: const Offset(0, -15),
+              //         child: RichText(
+              //           textAlign: TextAlign.center,
+              //           text: TextSpan(
+              //             style: GoogleFonts.montserrat(
+              //               fontSize: 10,
+              //               fontWeight: FontWeight.w600,
+              //               letterSpacing: 2.5,
+              //             ),
+              //             children: [
+              //               TextSpan(
+              //                 text: 'un',
+              //                 style: const TextStyle(color: AppColors.pop),
+              //               ),
+              //               TextSpan(
+              //                 text: 'scripted',
+              //                 style: const TextStyle(color: Color.fromARGB(255, 211, 211, 211)),
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+              //       )),
+              // ),
+            ],
           ),
-          _menuItem(
-            context,
-            index: 1,
-            currentIndex: navigationShell.currentIndex,
-            icon: Icons.calendar_month,
-          ),
-/*           _menuItem(
-            context,
-            index: 2,
-            currentIndex: navigationShell.currentIndex,
-            icon: Icons.star,
-          ), */
-        ],
-      ),
+        ),
+        const BingoFloatingButton(bottomOffset: 96),
+        const BingoOverlayWidget(),
+      ],
     );
   }
 
@@ -78,7 +127,7 @@ class AppView extends ConsumerWidget {
                 height: 50.0,
                 width: 50.0,
                 child: SvgPicture.asset(
-                  'stroke2.svg', // Pfad zu Ihrem SVG
+                  'assets/stroke2.svg', // Pfad zu Ihrem SVG
                   color: const Color.fromARGB(255, 248, 144, 231),
                   allowDrawingOutsideViewBox: true,
                 ),

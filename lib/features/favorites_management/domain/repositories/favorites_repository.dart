@@ -1,4 +1,5 @@
 import 'package:frontend/features/favorites_management/domain/entities/attendee.dart';
+import 'package:frontend/features/favorites_management/domain/entities/creator.dart';
 import 'package:frontend/features/favorites_management/domain/entities/show.dart';
 
 abstract class FavoritesRepository {
@@ -10,4 +11,9 @@ abstract class FavoritesRepository {
   Future<void> removeFavoriteAttendee(String userId, String attendeeId);
   Future<bool> isFavoriteShow(String userId, String showId);
   Future<bool> isFavoriteAttendee(String userId, String attendeeId);
+  Future<int> getFavoriteShowCount(String showId);
+  Future<List<Creator>> getFavoriteCreators(String userId);
+  Future<void> addFavoriteCreator(String userId, String creatorId, String name);
+  Future<void> removeFavoriteCreator(String userId, String creatorId);
+  Future<bool> isFavoriteCreator(String userId, String creatorId);
 }

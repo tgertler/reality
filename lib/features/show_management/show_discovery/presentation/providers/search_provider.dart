@@ -2,11 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/utils/logger.dart';
 import 'package:logger/logger.dart';
 import '../../data/sources/attendee_data_source.dart';
+import '../../data/sources/creator_data_source.dart';
 import '../../data/sources/show_data_source.dart';
 import '../../domain/use_cases/search_shows_and_attendees_use_case.dart';
 import '../../data/repositories/show_repository_impl.dart';
 import '../../data/repositories/attendee_repository_impl.dart';
+import '../../data/repositories/creator_repository_impl.dart';
 import '../../domain/repositories/attendee_repository.dart';
+import '../../domain/repositories/creator_repository.dart';
 import '../../domain/repositories/show_repository.dart';
 import '../../../../../core/utils/supabase_provider.dart';
 
@@ -73,9 +76,11 @@ final searchNotifierProvider =
 final searchUseCaseProvider = Provider<SearchShowsAndAttendeesUseCase>((ref) {
   final showRepository = ref.read(showRepositoryProvider);
   final attendeeRepository = ref.read(attendeeRepositoryProvider);
+  final creatorRepository = ref.read(creatorRepositoryProvider);
   return SearchShowsAndAttendeesUseCase(
     showRepository: showRepository,
     attendeeRepository: attendeeRepository,
+    creatorRepository: creatorRepository,
   );
 });
 
@@ -91,9 +96,14 @@ final attendeeRepositoryProvider = Provider<AttendeeRepository>((ref) {
   return AttendeeRepositoryImpl(mockDataSource);
 });
 
+/// Provider für das `CreatorRepository`
+final creatorRepositoryProvider = Provider<CreatorRepository>((ref) {
+  final dataSource = ref.read(creatorDataSourceProvider);
+  return CreatorRepositoryImpl(dataSource);
+});
+
 /// Provider für die Mock-Datenquelle
 final showDataSourceProvider = Provider<ShowDataSource>((ref) {
-  final supabaseClient = ref.read(supabaseClientProvider);
   return ShowDataSource();
 });
 
@@ -101,4 +111,9 @@ final showDataSourceProvider = Provider<ShowDataSource>((ref) {
 final attendeeDataSourceProvider = Provider<AttendeeDataSource>((ref) {
   final supabaseClient = ref.read(supabaseClientProvider);
   return AttendeeDataSource(supabaseClient);
+});
+
+final creatorDataSourceProvider = Provider<CreatorDataSource>((ref) {
+  final supabaseClient = ref.read(supabaseClientProvider);
+  return CreatorDataSource(supabaseClient);
 });

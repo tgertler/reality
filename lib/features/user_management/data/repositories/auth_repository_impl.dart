@@ -1,6 +1,7 @@
 import 'package:frontend/core/utils/logger.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -21,14 +22,52 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<AuthResponse> signUpWithEmailAndPassword(String email, String password) async {
+  Future<AuthResponse> signUpWithEmailAndPassword(
+    String email,
+    String password, {
+    Map<String, dynamic>? data,
+  }) async {
     _logger.i('Starting signUpWithEmailAndPassword for email: $email');
     try {
-      final response = await supabaseClient.auth.signUp(email: email, password: password);
+      final response = await supabaseClient.auth.signUp(
+        email: email,
+        password: password,
+        data: data,
+      );
       _logger.i('Successfully signed up user: ${response.user}');
       return response;
     } catch (e, stackTrace) {
       _logger.e('Error during signUpWithEmailAndPassword', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteCurrentUserAccount() async {
+    _logger.i('Starting deleteCurrentUserAccount');
+
+    final user = supabaseClient.auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      await supabaseClient.functions.invoke(
+        'delete-user-account',
+        body: {'userId': user.id},
+      );
+
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (e, stackTrace) {
+        _logger.w(
+          'Account deleted, but local signOut failed. Continuing anyway. Error: $e\n$stackTrace',
+        );
+      }
+
+      _logger.i('Successfully deleted current user account: ${user.id}');
+    } catch (e, stackTrace) {
+      _logger.e('Error during deleteCurrentUserAccount', e, stackTrace);
       rethrow;
     }
   }

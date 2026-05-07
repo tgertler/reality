@@ -50,6 +50,18 @@ class _CustomWeeklyDatePickerState
   final int _weekIndexOffset = 1000;
   final DateTime _todaysDateTime = DateTime.now();
 
+  DateTime _startOfWeek(DateTime date) {
+    return date.subtract(Duration(days: date.weekday - 1));
+  }
+
+  int _pageForDate(DateTime date) {
+    final anchorWeek = _startOfWeek(_initialSelectedDay);
+    final targetWeek = _startOfWeek(date);
+    final differenceInWeeks =
+        targetWeek.difference(anchorWeek).inDays ~/ widget.daysInWeek;
+    return _weekIndexOffset + differenceInWeeks;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -60,8 +72,27 @@ class _CustomWeeklyDatePickerState
 
   @override
   Widget build(BuildContext context) {
+    final desiredPage = _pageForDate(widget.selectedDay);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_customPageController.controller.hasClients) return;
+
+      final currentPage = _customPageController.controller.page?.round();
+      if (currentPage != desiredPage) {
+        _customPageController.controller.jumpToPage(desiredPage);
+      }
+
+      final desiredWeeknumber =
+          DateTimeExtension(widget.selectedDay).weekOfYear;
+      if (_weeknumberInSwipe != desiredWeeknumber) {
+        setState(() {
+          _weeknumberInSwipe = desiredWeeknumber;
+        });
+      }
+    });
+
     return Container(
-      height: 64,
+      height: 56,
       color: widget.backgroundColor,
       child: Row(
         children: <Widget>[
@@ -128,11 +159,11 @@ class _CustomWeeklyDatePickerState
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Padding(
-                padding: EdgeInsets.only(bottom: 4.0),
+                padding: EdgeInsets.only(bottom: 2.0),
                 child: Text(
                   weekday,
                   style:
-                      TextStyle(fontSize: 12.0, color: widget.weekdayTextColor),
+                      TextStyle(fontSize: 11.0, color: widget.weekdayTextColor),
                 ),
               ),
               Container(
@@ -146,11 +177,11 @@ class _CustomWeeklyDatePickerState
                   backgroundColor: isSelected
                       ? widget.selectedDigitBackgroundColor
                       : widget.backgroundColor,
-                  radius: 14.0,
+                  radius: 13.0,
                   child: Text(
                     '${dateTime.day}',
                     style: TextStyle(
-                        fontSize: 16.0,
+                        fontSize: 15.0,
                         color: isSelected
                             ? widget.selectedDigitColor
                             : widget.digitsColor),

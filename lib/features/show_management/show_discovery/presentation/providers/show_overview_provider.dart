@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/use_cases/get_show_by_id_use_case.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/entities/show.dart';
-
-import '../../../../../core/utils/supabase_provider.dart';
 import '../../data/repositories/show_repository_impl.dart';
 import '../../data/sources/show_data_source.dart';
 import '../../domain/repositories/show_repository.dart';
@@ -11,6 +9,10 @@ class ShowState {
   final String id;
   final String title;
   final String description;
+  final String genre;
+  final String releaseWindow;
+  final String headerImageUrl;
+  final String mainColor;
   final bool isLoading;
   final String? errorMessage;
 
@@ -18,6 +20,10 @@ class ShowState {
     this.id = '',
     this.title = '',
     this.description = '',
+    this.genre = '',
+    this.releaseWindow = '',
+    this.headerImageUrl = '',
+    this.mainColor = '',
     this.isLoading = false,
     this.errorMessage,
   });
@@ -26,6 +32,10 @@ class ShowState {
     String? id,
     String? title,
     String? description,
+    String? genre,
+    String? releaseWindow,
+    String? headerImageUrl,
+    String? mainColor,
     bool? isLoading,
     String? errorMessage,
   }) {
@@ -33,6 +43,10 @@ class ShowState {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      genre: genre ?? this.genre,
+      releaseWindow: releaseWindow ?? this.releaseWindow,
+      headerImageUrl: headerImageUrl ?? this.headerImageUrl,
+      mainColor: mainColor ?? this.mainColor,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -45,13 +59,17 @@ class ShowOverviewNotifier extends StateNotifier<ShowState> {
   ShowOverviewNotifier(this.getShowByIdUseCase) : super(ShowState());
 
   Future<void> loadShow(String showId) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = ShowState(id: showId, isLoading: true);
     try {
       final Show show = await getShowByIdUseCase.execute(showId);
       state = state.copyWith(
         id: show.id,
-        title: show.title,
+        title: show.title ?? show.displayTitle,
         description: show.description,
+        genre: show.genre?.trim() ?? '',
+        releaseWindow: show.releaseWindow?.trim() ?? '',
+        headerImageUrl: show.headerImageUrl?.trim() ?? '',
+        mainColor: show.mainColor?.trim() ?? '',
         isLoading: false,
       );
     } catch (e) {
@@ -81,7 +99,5 @@ final showRepositoryProvider = Provider<ShowRepository>((ref) {
 
 /// Provider für die Mock-Datenquelle
 final showDataSourceProvider = Provider<ShowDataSource>((ref) {
-  final supabaseClient = ref.read(supabaseClientProvider);
-
   return ShowDataSource();
 });

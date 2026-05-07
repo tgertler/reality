@@ -15,7 +15,6 @@ class GetCalendarEventsWithShowsForDate {
     _logger.i('Starting search for events on date: $date');
 
     // Ensure UUIDs are valid
-    final uuid = Uuid();
     for (final showId in showIds) {
       if (!Uuid.isValidUUID(fromString: showId)) {
         throw FormatException('Invalid UUID: $showId');

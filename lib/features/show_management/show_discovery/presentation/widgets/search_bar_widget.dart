@@ -29,9 +29,14 @@ class _MainSearchBarWidgetState extends ConsumerState<MainSearchBarWidget> {
   }
 
   void _onSearchChanged(String value) {
+    final query = value.trim();
     if (_debounce?.isActive ?? false) _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      ref.read(searchNotifierProvider.notifier).search(value);
+    _debounce = Timer(const Duration(milliseconds: 280), () {
+      if (query.isEmpty) {
+        ref.read(searchNotifierProvider.notifier).clearSearch();
+        return;
+      }
+      ref.read(searchNotifierProvider.notifier).search(query);
     });
   }
 

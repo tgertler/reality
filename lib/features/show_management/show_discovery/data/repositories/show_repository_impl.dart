@@ -1,5 +1,4 @@
 import 'package:logger/logger.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../domain/entities/show.dart';
 import '../../domain/repositories/show_repository.dart';
@@ -10,13 +9,6 @@ class ShowRepositoryImpl implements ShowRepository {
   final Logger _logger = getLogger('ShowRepositoryImpl');
 
   ShowRepositoryImpl(this.dataSource);
-
-  Future<void> _checkAuthentication() async {
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session == null) {
-      throw Exception('User is not authenticated');
-    }
-  }
 
   @override
   Future<List<Show>> search(String query) async {
@@ -30,7 +22,12 @@ class ShowRepositoryImpl implements ShowRepository {
           .map((json) => Show(
               id: json['id'].toString(),
               title: json['title'],
-              description: json['description']))
+            shortTitle: json['short_title'],
+              description: json['description'],
+              genre: json['genre'],
+              releaseWindow: json['release_window'],
+              headerImageUrl: json['header_image_url'] as String?,
+              mainColor: json['main_color'] as String?))
           .toList();
 
       _logger.i('Filtered results: $filteredResults');
@@ -52,7 +49,12 @@ class ShowRepositoryImpl implements ShowRepository {
       final show = Show(
         id: response?['id'].toString() ?? '',
         title: response?['title'] ?? '',
+        shortTitle: response?['short_title'] as String?,
         description: response?['description'] ?? '',
+        genre: response?['genre'] as String?,
+        releaseWindow: response?['release_window'] as String?,
+        headerImageUrl: response?['header_image_url'] as String?,
+        mainColor: response?['main_color'] as String?,
       );
 
       _logger.i('Fetched show: $show');

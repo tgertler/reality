@@ -12,6 +12,7 @@ import '../../../../../core/utils/logger.dart';
 /// State für Show-Events (Next + Upcoming)
 class ShowEventsState {
   final CalendarEventWithShow? nextEvent;
+  final CalendarEventWithShow? lastEvent;
   final List<CalendarEventWithShow> upcomingEvents;
   final bool isLoadingNext;
   final bool isLoadingUpcoming;
@@ -19,6 +20,7 @@ class ShowEventsState {
 
   ShowEventsState({
     this.nextEvent,
+    this.lastEvent,
     this.upcomingEvents = const [],
     this.isLoadingNext = false,
     this.isLoadingUpcoming = false,
@@ -27,13 +29,16 @@ class ShowEventsState {
 
   ShowEventsState copyWith({
     CalendarEventWithShow? nextEvent,
+    CalendarEventWithShow? lastEvent,
     List<CalendarEventWithShow>? upcomingEvents,
     bool? isLoadingNext,
     bool? isLoadingUpcoming,
     String? errorMessage,
+    bool clearLastEvent = false,
   }) {
     return ShowEventsState(
       nextEvent: nextEvent ?? this.nextEvent,
+      lastEvent: clearLastEvent ? null : (lastEvent ?? this.lastEvent),
       upcomingEvents: upcomingEvents ?? this.upcomingEvents,
       isLoadingNext: isLoadingNext ?? this.isLoadingNext,
       isLoadingUpcoming: isLoadingUpcoming ?? this.isLoadingUpcoming,
@@ -74,15 +79,43 @@ class ShowEventsNotifier extends StateNotifier<ShowEventsState> {
 
     try {
       final events = await getUpcomingEvents.execute(showId);
+      final lastEvent = _resolveLastEvent(events);
       _logger.i('Upcoming events received: ${events.length}');
-      state = state.copyWith(isLoadingUpcoming: false, upcomingEvents: events);
+      state = state.copyWith(
+        isLoadingUpcoming: false,
+        upcomingEvents: events,
+        lastEvent: lastEvent,
+        clearLastEvent: lastEvent == null,
+      );
     } catch (e, stackTrace) {
       _logger.e('Error fetching upcoming events', e, stackTrace);
       state = state.copyWith(
         isLoadingUpcoming: false,
+        clearLastEvent: true,
         errorMessage: e.toString(),
       );
     }
+  }
+
+  CalendarEventWithShow? _resolveLastEvent(List<CalendarEventWithShow> events) {
+    if (events.isEmpty) return null;
+
+    final now = DateTime.now();
+    CalendarEventWithShow? candidate;
+
+    for (final event in events) {
+      final start = event.calendarEvent.startDatetime.toLocal();
+      if (start.isAfter(now)) {
+        continue;
+      }
+
+      if (candidate == null ||
+          start.isAfter(candidate.calendarEvent.startDatetime.toLocal())) {
+        candidate = event;
+      }
+    }
+
+    return candidate;
   }
 
   /// Beide gleichzeitig laden

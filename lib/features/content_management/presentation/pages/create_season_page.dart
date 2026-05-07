@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/widgets/loading/app_skeleton.dart';
 import '../providers/content_provider.dart';
 import '../../domain/entities/season.dart';
 import 'package:uuid/uuid.dart';
@@ -77,7 +78,11 @@ class _CreateSeasonPageState extends ConsumerState<CreateSeasonPage> {
       key: _formKey,
       child: Column(
         children: [
-          if (contentState.isLoading) CircularProgressIndicator(),
+          if (contentState.isLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: AppSkeletonBox(width: double.infinity, height: 10),
+            ),
           if (contentState.errorMessage.isNotEmpty)
             Text('Error: ${contentState.errorMessage}', style: TextStyle(color: Colors.red)),
           TextFormField(
@@ -119,7 +124,7 @@ class _CreateSeasonPageState extends ConsumerState<CreateSeasonPage> {
             },
           ),
           DropdownButtonFormField<String>(
-            value: _releaseFrequencyController.text.isEmpty ? null : _releaseFrequencyController.text,
+            initialValue: _releaseFrequencyController.text.isEmpty ? null : _releaseFrequencyController.text,
             decoration: const InputDecoration(labelText: 'Release Frequency'),
             items: ['daily', 'weekly', 'monthly', 'onetime']
                 .map((label) => DropdownMenuItem(
@@ -155,7 +160,9 @@ class _CreateSeasonPageState extends ConsumerState<CreateSeasonPage> {
             onPressed: _isSubmitting ? null : () async {
               await addSeason();
             },
-            child: _isSubmitting ? CircularProgressIndicator() : const Text('Add Season'),
+            child: _isSubmitting
+                ? const AppSkeletonBox(width: 92, height: 14)
+                : const Text('Add Season'),
           ),
         ],
       ),

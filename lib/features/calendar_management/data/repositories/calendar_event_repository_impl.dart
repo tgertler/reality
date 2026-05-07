@@ -2,6 +2,7 @@ import 'package:logger/logger.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../domain/entities/calendar_event.dart';
 import '../../domain/entities/calendar_event_with_show.dart';
+import '../../domain/entities/resolved_calendar_event.dart';
 import '../../domain/repositories/calendar_event_repository.dart';
 import '../sources/calendar_event_datasource.dart';
 
@@ -42,14 +43,32 @@ class CalendarEventRepositoryImpl implements CalendarEventRepository {
       DateTime date, List<String> showIds, List<String> attendeeIds) async {
     _logger.i('Fetching calendar events with shows for date: $date');
     try {
-      final eventsWithShows = dataSource.getCalendarEventsWithShowsByDate(
-          date, showIds, attendeeIds);
+      // Uses the direct-query replacement (RPC was commented out in datasource)
+      final eventsWithShows =
+          await dataSource.getCalendarEventsWithShowsByDateDirect(
+              date, showIds, attendeeIds);
       _logger.i(
-          'Calendar events with shows for date $date received: $eventsWithShows');
+          'Calendar events with shows for date $date received: ${eventsWithShows.length}');
       return eventsWithShows;
     } catch (e, stackTrace) {
       _logger.e('Error fetching calendar events with shows for date $date', e,
           stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<ResolvedCalendarEvent>> getResolvedCalendarEventsByDate(
+      DateTime date) async {
+    _logger.i('Fetching resolved calendar events for date: $date');
+    try {
+      final events =
+          await dataSource.getResolvedCalendarEventsByDate(date);
+      _logger.i('Resolved calendar events for $date: ${events.length}');
+      return events;
+    } catch (e, stackTrace) {
+      _logger.e(
+          'Error fetching resolved calendar events for date $date', e, stackTrace);
       rethrow;
     }
   }

@@ -5,7 +5,6 @@ import 'package:frontend/features/show_management/show_discovery/data/sources/se
 import 'package:frontend/features/show_management/show_discovery/domain/repositories/season_repository.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/use_cases/get_seasons_by_show_use_case.dart';
 import 'package:logger/logger.dart';
-import '../../../../../core/utils/supabase_provider.dart';
 
 class SearchState {
   final bool isLoading;
@@ -82,6 +81,5 @@ final seasonsRepositoryProvider = Provider<SeasonRepository>((ref) {
 
 /// Provider für die Mock-Datenquelle
 final seasonsDataSourceProvider = Provider<SeasonDataSource>((ref) {
-  final supabaseClient = ref.read(supabaseClientProvider);
   return SeasonDataSource();
 });

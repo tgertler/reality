@@ -21,7 +21,6 @@ class WelcomeMessageWidget extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(10),
         ),
-        padding: const EdgeInsets.all(10.0),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(

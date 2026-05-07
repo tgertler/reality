@@ -80,7 +80,7 @@ class FilterOverlaySearchAttendeeCard extends ConsumerWidget {
                                 .removeAttendee(id);
                           }
                         },
-                        activeColor: Colors.green,
+                        activeThumbColor: Colors.green,
                         inactiveThumbColor: Colors.grey,
                         inactiveTrackColor: Colors.white30,
                       ),

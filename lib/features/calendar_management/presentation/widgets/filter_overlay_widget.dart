@@ -16,8 +16,9 @@ class FilterOverlayWidget extends ConsumerWidget {
       height: double.infinity,
       child: Column(
         children: [
+          const SizedBox(height: 8),
           SizedBox(
-            height: 40,
+            height: 34,
             child: Row(
               children: [
                 Expanded(

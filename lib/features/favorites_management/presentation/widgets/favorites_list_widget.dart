@@ -7,7 +7,7 @@ import 'favorite_attendees_list_widget.dart';
 class FavoritesListWidget extends ConsumerStatefulWidget {
   final String userId;
 
-  const FavoritesListWidget({Key? key, required this.userId}) : super(key: key);
+  const FavoritesListWidget({super.key, required this.userId});
 
   @override
   _FavoritesListWidgetState createState() => _FavoritesListWidgetState();

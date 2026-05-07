@@ -2,10 +2,6 @@ import 'package:frontend/features/show_management/show_discovery/domain/reposito
 import 'package:logger/logger.dart';
 
 import '../../../../../core/utils/logger.dart';
-import '../entities/attendee.dart';
-import '../entities/show.dart';
-import '../repositories/show_repository.dart';
-import '../repositories/attendee_repository.dart';
 
 class GetSeasonsByShowUseCase {
   final SeasonRepository seasonRepository;

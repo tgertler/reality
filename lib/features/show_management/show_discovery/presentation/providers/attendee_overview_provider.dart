@@ -4,13 +4,8 @@ import 'package:frontend/features/show_management/show_discovery/data/sources/at
 import 'package:frontend/features/show_management/show_discovery/domain/entities/attendee.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/repositories/attendee_repository.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/use_cases/get_attendee_by_id_use_case.dart';
-import 'package:frontend/features/show_management/show_discovery/domain/use_cases/get_show_by_id_use_case.dart';
-import 'package:frontend/features/show_management/show_discovery/domain/entities/show.dart';
 
 import '../../../../../core/utils/supabase_provider.dart';
-import '../../data/repositories/show_repository_impl.dart';
-import '../../data/sources/show_data_source.dart';
-import '../../domain/repositories/show_repository.dart';
 
 class AttendeeState {
   final String id;

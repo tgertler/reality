@@ -20,10 +20,13 @@ class ActiveFiltersState {
 class ActiveFiltersNotifier extends StateNotifier<ActiveFiltersState> {
   ActiveFiltersNotifier() : super(ActiveFiltersState());
 
-  void addShow(String showId, String title) {
+  void addShow(String showId, String title, {String? genre}) {
     if (!state.activeShows.any((show) => show.showId == showId)) {
       state = state.copyWith(
-        activeShows: [...state.activeShows, Show(showId: showId, title: title)],
+        activeShows: [
+          ...state.activeShows,
+          Show(showId: showId, title: title, genre: genre),
+        ],
       );
     }
   }

@@ -35,7 +35,7 @@ class FlexibleTitleWidget extends StatelessWidget {
                   color: part.color,
                   fontSize: 30,
                   fontWeight: part.isBold ? FontWeight.w900 : FontWeight.normal,
-                  fontFamily: GoogleFonts.oswald().fontFamily,
+                  fontFamily: GoogleFonts.montserrat().fontFamily,
                 ),
               );
             }).toList(),

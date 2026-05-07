@@ -9,6 +9,41 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  plugins:
+    - import_lint
+
+import_lint:
+  rules:
+    domain_no_flutter:
+      target: "package:frontend/features/**/domain/**/*.dart"
+      from: "package:flutter/**/*.dart"
+      except: []
+    domain_no_data:
+      target: "package:frontend/features/**/domain/**/*.dart"
+      from: "package:frontend/features/**/data/**/*.dart"
+      except: []
+    domain_no_sources:
+      target: "package:frontend/features/**/domain/**/*.dart"
+      from: "package:frontend/features/**/data/sources/**/*.dart"
+      except: []
+    domain_no_supabase:
+      target: "package:frontend/features/**/domain/**/*.dart"
+      from: "package:supabase_flutter/**/*.dart"
+      except: []
+    presentation_no_data:
+      target: "package:frontend/features/**/presentation/**/*.dart"
+      from: "package:frontend/features/**/data/**/*.dart"
+      except: []
+    presentation_no_sources:
+      target: "package:frontend/features/**/presentation/**/*.dart"
+      from: "package:frontend/features/**/data/sources/**/*.dart"
+      except: []
+    presentation_no_supabase:
+      target: "package:frontend/features/**/presentation/**/*.dart"
+      from: "package:supabase_flutter/**/*.dart"
+      except: []
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

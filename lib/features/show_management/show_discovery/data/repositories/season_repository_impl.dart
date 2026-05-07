@@ -1,7 +1,6 @@
 import 'package:frontend/features/show_management/show_discovery/data/sources/season_data_source.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/repositories/season_repository.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/entities/season.dart';
-import 'package:frontend/features/show_management/show_discovery/domain/entities/streaming_option.dart';
 import 'package:logger/logger.dart';
 import '../../../../../core/utils/logger.dart';
 

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/widgets/loading/app_skeleton.dart';
 import '../providers/favorites_provider.dart';
 
 class FavoriteAttendeesList extends ConsumerStatefulWidget {
   final String userId;
 
-  const FavoriteAttendeesList({Key? key, required this.userId})
-      : super(key: key);
+  const FavoriteAttendeesList({super.key, required this.userId});
 
   @override
   _FavoriteAttendeesListState createState() => _FavoriteAttendeesListState();
@@ -31,7 +31,15 @@ class _FavoriteAttendeesListState extends ConsumerState<FavoriteAttendeesList> {
     final favoritesState = ref.watch(favoritesNotifierProvider);
 
     if (favoritesState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Column(
+        children: List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AppSkeletonBox(height: 48, borderRadius: BorderRadius.all(Radius.circular(10))),
+          ),
+        ),
+      );
     }
 
     if (favoritesState.errorMessage.isNotEmpty) {

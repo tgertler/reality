@@ -11,7 +11,6 @@ class CustomWeeklyDatePickerWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final datepickerState = ref.watch(datepickerNotifierProvider);
-    final PageController pageController = PageController(initialPage: 1000);
     final isFilterOverlayVisible = ref.watch(filterOverlayProvider);
 
     return IgnorePointer(

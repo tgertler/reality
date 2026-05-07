@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/config/app_colors.dart';
 
 class TopBarNoSearchWidget extends StatelessWidget implements PreferredSizeWidget {
   const TopBarNoSearchWidget({super.key});
@@ -8,8 +9,8 @@ class TopBarNoSearchWidget extends StatelessWidget implements PreferredSizeWidge
     return AppBar(
       automaticallyImplyLeading: false,
       titleSpacing: 0,
-      backgroundColor: const Color.fromARGB(255, 213, 245, 245),
-      toolbarHeight: 60,
+      backgroundColor: AppColors.pop,
+      toolbarHeight: 50,
     );
   }
 

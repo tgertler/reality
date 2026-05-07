@@ -7,12 +7,46 @@ class CustomPageController {
   CustomPageController() : controller = PageController(initialPage: 1000);
 
   void jumpToToday() {
-    final DateTime _todaysDateTime = DateTime.now();
+    if (!controller.hasClients) return;
+    controller.jumpToPage(1000);
+  }
+}
+
+class CalendarMonthPageController {
+  final PageController controller;
+
+  CalendarMonthPageController() : controller = PageController(initialPage: 500);
+
+  void jumpToToday() {
+    if (!controller.hasClients) return;
+    controller.jumpToPage(500);
+  }
+}
+
+class CalendarThreeDayPageController {
+  final PageController controller;
+
+  CalendarThreeDayPageController()
+      : controller = PageController(initialPage: 500);
+
+  void jumpToToday() {
+    if (!controller.hasClients) return;
+    controller.jumpToPage(500);
   }
 }
 
 final customPageControllerProvider = Provider<CustomPageController>((ref) {
   return CustomPageController();
+});
+
+final calendarMonthPageControllerProvider =
+    Provider<CalendarMonthPageController>((ref) {
+  return CalendarMonthPageController();
+});
+
+final calendarThreeDayPageControllerProvider =
+    Provider<CalendarThreeDayPageController>((ref) {
+  return CalendarThreeDayPageController();
 });
 
 extension DateTimeExtension on DateTime {

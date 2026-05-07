@@ -1,5 +1,6 @@
 import 'package:logger/logger.dart';
 import '../../../../../core/utils/logger.dart';
+import '../../domain/entities/creator.dart';
 import '../../domain/entities/show.dart';
 import '../../domain/entities/attendee.dart';
 import '../../domain/repositories/favorites_repository.dart';
@@ -17,7 +18,13 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
     try {
       final shows = await dataSource.getFavoriteShows(userId);
       _logger.i('Favorite shows received: $shows');
-      return shows.map((show) => Show(showId: show['show_id'], title: show['title'])).toList();
+        return shows
+          .map((show) => Show(
+            showId: show['show_id'],
+            title: show['title'],
+            shortTitle: show['short_title'] as String?,
+            ))
+          .toList();
     } catch (e, stackTrace) {
       _logger.e('Error fetching favorite shows', e, stackTrace);
       rethrow;
@@ -96,13 +103,74 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
     }
   }
 
-    @override
+  @override
   Future<bool> isFavoriteAttendee(String userId, String attendeeId) async {
     _logger.i('Checking if show is favorite for user: $userId');
     try {
       return await dataSource.isFavoriteAttendee(userId, attendeeId);
     } catch (e, stackTrace) {
       _logger.e('Error checking if show is favorite', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<int> getFavoriteShowCount(String showId) async {
+    _logger.i('Getting favorite count for show: $showId');
+    try {
+      return await dataSource.getFavoriteShowCount(showId);
+    } catch (e, stackTrace) {
+      _logger.e('Error getting favorite count for show', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Creator>> getFavoriteCreators(String userId) async {
+    _logger.i('Fetching favorite creators for user: $userId');
+    try {
+      final creators = await dataSource.getFavoriteCreators(userId);
+      _logger.i('Favorite creators received: $creators');
+      return creators
+          .map((c) => Creator(creatorId: c['creator_id'], name: c['name']))
+          .toList();
+    } catch (e, stackTrace) {
+      _logger.e('Error fetching favorite creators', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> addFavoriteCreator(String userId, String creatorId, String name) async {
+    _logger.i('Adding favorite creator for user: $userId');
+    try {
+      await dataSource.addFavoriteCreator(userId, creatorId, name);
+      _logger.i('Favorite creator added successfully');
+    } catch (e, stackTrace) {
+      _logger.e('Error adding favorite creator', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> removeFavoriteCreator(String userId, String creatorId) async {
+    _logger.i('Removing favorite creator for user: $userId');
+    try {
+      await dataSource.removeFavoriteCreator(userId, creatorId);
+      _logger.i('Favorite creator removed successfully');
+    } catch (e, stackTrace) {
+      _logger.e('Error removing favorite creator', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> isFavoriteCreator(String userId, String creatorId) async {
+    _logger.i('Checking if creator is favorite for user: $userId');
+    try {
+      return await dataSource.isFavoriteCreator(userId, creatorId);
+    } catch (e, stackTrace) {
+      _logger.e('Error checking if creator is favorite', e, stackTrace);
       rethrow;
     }
   }

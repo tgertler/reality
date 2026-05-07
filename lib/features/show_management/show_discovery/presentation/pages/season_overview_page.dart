@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/show_management/show_discovery/presentation/providers/season_overview_provider.dart';
-import '../providers/show_overview_provider.dart';
-import '../widgets/show_overview_season_list_widget.dart';
 import '../widgets/show_overview_title_widget.dart';
 
 class SeasonOverviewPage extends ConsumerStatefulWidget {

@@ -5,11 +5,6 @@ import 'package:frontend/features/show_management/show_discovery/domain/entities
 import 'package:frontend/features/show_management/show_discovery/domain/repositories/season_repository.dart';
 import 'package:frontend/features/show_management/show_discovery/domain/use_cases/get_season_by_id_use_case.dart';
 
-import '../../../../../core/utils/supabase_provider.dart';
-import '../../data/repositories/show_repository_impl.dart';
-import '../../data/sources/show_data_source.dart';
-import '../../domain/repositories/show_repository.dart';
-
 class SeasonState {
   final String id;
   final String showId;
@@ -112,7 +107,5 @@ final seasonRepositoryProvider = Provider<SeasonRepository>((ref) {
 
 /// Provider für die Mock-Datenquelle
 final seasonDataSourceProvider = Provider<SeasonDataSource>((ref) {
-  final supabaseClient = ref.read(supabaseClientProvider);
-
   return SeasonDataSource();
 });

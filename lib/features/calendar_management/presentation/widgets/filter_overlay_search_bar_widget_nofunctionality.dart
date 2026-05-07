@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/filter_overlay_provider.dart';
 import '../providers/filter_overlay_search_provider.dart';
 
 class FilterOverlaySearchBarWidgetNoFunctionality extends ConsumerWidget {
@@ -7,19 +8,16 @@ class FilterOverlaySearchBarWidgetNoFunctionality extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var textFieldController = TextEditingController();
-    final isFilterOverlayVisible = ref.watch(filterOverlaySearchProvider);
-
     return Container(
       child: TextField(
         readOnly: true,
-        controller: textFieldController,
-        onTap: () => {
-          ref.read(filterOverlaySearchProvider.notifier).state =
-              !isFilterOverlayVisible
+        onTap: () {
+          ref.read(filterOverlayProvider.notifier).state = false;
+          ref.read(filterOverlaySearchProvider.notifier).state = true;
         },
         decoration: InputDecoration(
           hintText: 'Suchen',
+          isDense: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(0),
             borderSide: BorderSide(
@@ -28,9 +26,12 @@ class FilterOverlaySearchBarWidgetNoFunctionality extends ConsumerWidget {
             ),
           ),
           prefixIcon: Icon(Icons.search),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 36, minHeight: 20),
           fillColor: Colors.black,
           filled: true,
-          contentPadding: EdgeInsets.symmetric(horizontal: 20),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         ),
       ),
     );

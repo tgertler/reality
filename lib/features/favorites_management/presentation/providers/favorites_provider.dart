@@ -12,6 +12,12 @@ import 'package:frontend/features/favorites_management/domain/use_cases/add_favo
 import 'package:frontend/features/favorites_management/domain/use_cases/remove_favorite_attendee.dart';
 import 'package:frontend/features/favorites_management/domain/use_cases/is_favorite_show_use_case.dart';
 import 'package:frontend/features/favorites_management/domain/use_cases/is_favorite_attendee_use_case.dart';
+import 'package:frontend/features/favorites_management/domain/use_cases/get_favorite_show_count_use_case.dart';
+import 'package:frontend/features/favorites_management/domain/entities/creator.dart';
+import 'package:frontend/features/favorites_management/domain/use_cases/add_favorite_creator_use_case.dart';
+import 'package:frontend/features/favorites_management/domain/use_cases/get_favorite_creators_use_case.dart';
+import 'package:frontend/features/favorites_management/domain/use_cases/remove_favorite_creator_use_case.dart';
+import 'package:frontend/features/favorites_management/domain/use_cases/is_favorite_creator_use_case.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/sources/favorites_data_source.dart';
@@ -20,25 +26,31 @@ class FavoritesState {
   final bool isLoading;
   final List<Show> favoriteShows;
   final List<Attendee> favoriteAttendees;
+  final List<Creator>? _favoriteCreators;
+  List<Creator> get favoriteCreators => _favoriteCreators ?? const [];
   final String errorMessage;
 
   FavoritesState({
     this.isLoading = false,
     this.favoriteShows = const [],
     this.favoriteAttendees = const [],
+    List<Creator>? favoriteCreators,
     this.errorMessage = '',
-  });
+  }) : _favoriteCreators = favoriteCreators;
 
   FavoritesState copyWith({
     bool? isLoading,
     List<Show>? favoriteShows,
     List<Attendee>? favoriteAttendees,
+    List<Creator>? favoriteCreators,
     String? errorMessage,
   }) {
     return FavoritesState(
       isLoading: isLoading ?? this.isLoading,
       favoriteShows: favoriteShows ?? this.favoriteShows,
       favoriteAttendees: favoriteAttendees ?? this.favoriteAttendees,
+      // Hot-reload safe fallback when old state instances still carry null.
+      favoriteCreators: favoriteCreators ?? _favoriteCreators ?? const [],
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
@@ -53,6 +65,10 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
   final RemoveFavoriteAttendee removeFavoriteAttendee;
   final IsFavoriteShow isFavoriteShow;
   final IsFavoriteAttendee isFavoriteAttendee;
+  final AddFavoriteCreator addFavoriteCreator;
+  final RemoveFavoriteCreator removeFavoriteCreator;
+  final IsFavoriteCreator isFavoriteCreator;
+  final GetFavoriteCreators getFavoriteCreators;
   final Logger _logger = getLogger('FavoritesNotifier');
 
   FavoritesNotifier(
@@ -64,6 +80,10 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
     this.removeFavoriteAttendee,
     this.isFavoriteShow,
     this.isFavoriteAttendee,
+    this.addFavoriteCreator,
+    this.removeFavoriteCreator,
+    this.isFavoriteCreator,
+    this.getFavoriteCreators,
   ) : super(FavoritesState());
 
   Future<void> fetchFavoriteShows(String userId) async {
@@ -94,6 +114,20 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
     }
   }
 
+  Future<void> fetchFavoriteCreators(String userId) async {
+    _logger.i('Fetching favorite creators for user: $userId');
+    state = state.copyWith(isLoading: true, errorMessage: '');
+
+    try {
+      final creators = await getFavoriteCreators.call(userId);
+      _logger.i('Favorite creators received: $creators');
+      state = state.copyWith(isLoading: false, favoriteCreators: creators);
+    } catch (e, stackTrace) {
+      _logger.e('Error fetching favorite creators', e, stackTrace);
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+    }
+  }
+
   Future<void> addShowToFavorites(String userId, String showId, String title) async {
     _logger.i('Adding show to favorites for user: $userId');
     state = state.copyWith(isLoading: true, errorMessage: '');
@@ -104,6 +138,7 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
     } catch (e, stackTrace) {
       _logger.e('Error adding show to favorites', e, stackTrace);
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      rethrow;
     }
   }
 
@@ -117,6 +152,7 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
     } catch (e, stackTrace) {
       _logger.e('Error removing show from favorites', e, stackTrace);
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      rethrow;
     }
   }
 
@@ -153,6 +189,32 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
   Future<bool> isAttendeeFavorite(String userId, String attendeeId) async {
     return await isFavoriteAttendee.call(userId, attendeeId);
   }
+
+  Future<bool> isCreatorFavorite(String userId, String creatorId) async {
+    return await isFavoriteCreator.call(userId, creatorId);
+  }
+
+  Future<void> addCreatorToFavorites(String userId, String creatorId, String name) async {
+    _logger.i('Adding creator to favorites for user: $userId');
+    try {
+      await addFavoriteCreator.call(userId, creatorId, name);
+      await fetchFavoriteCreators(userId);
+    } catch (e, stackTrace) {
+      _logger.e('Error adding creator to favorites', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> removeCreatorFromFavorites(String userId, String creatorId) async {
+    _logger.i('Removing creator from favorites for user: $userId');
+    try {
+      await removeFavoriteCreator.call(userId, creatorId);
+      await fetchFavoriteCreators(userId);
+    } catch (e, stackTrace) {
+      _logger.e('Error removing creator from favorites', e, stackTrace);
+      rethrow;
+    }
+  }
 }
 
 /// Riverpod Provider für den `FavoritesNotifier`
@@ -166,6 +228,10 @@ final favoritesNotifierProvider =
   final removeFavoriteAttendee = ref.read(removeFavoriteAttendeeProvider);
   final isFavoriteShow = ref.read(isFavoriteShowProvider);
   final isFavoriteAttendee = ref.read(isFavoriteAttendeeProvider);
+  final addFavoriteCreator = ref.read(addFavoriteCreatorProvider);
+  final removeFavoriteCreator = ref.read(removeFavoriteCreatorProvider);
+  final isFavoriteCreator = ref.read(isFavoriteCreatorProvider);
+  final getFavoriteCreators = ref.read(getFavoriteCreatorsProvider);
   return FavoritesNotifier(
     getFavoriteShows,
     getFavoriteAttendees,
@@ -175,6 +241,10 @@ final favoritesNotifierProvider =
     removeFavoriteAttendee,
     isFavoriteShow,
     isFavoriteAttendee,
+    addFavoriteCreator,
+    removeFavoriteCreator,
+    isFavoriteCreator,
+    getFavoriteCreators,
   );
 });
 
@@ -188,6 +258,12 @@ final getFavoriteShowsProvider = Provider<GetFavoriteShows>((ref) {
 final getFavoriteAttendeesProvider = Provider<GetFavoriteAttendees>((ref) {
   final favoritesRepository = ref.read(favoritesRepositoryProvider);
   return GetFavoriteAttendees(favoritesRepository);
+});
+
+/// Provider für den `GetFavoriteCreators` Use Case
+final getFavoriteCreatorsProvider = Provider<GetFavoriteCreators>((ref) {
+  final favoritesRepository = ref.read(favoritesRepositoryProvider);
+  return GetFavoriteCreators(favoritesRepository);
 });
 
 /// Provider für den `AddFavoriteShow` Use Case
@@ -236,4 +312,29 @@ final favoritesRepositoryProvider = Provider<FavoritesRepository>((ref) {
 final favoritesDataSourceProvider = Provider<FavoritesDataSource>((ref) {
   final supabaseClient = ref.read(supabaseClientProvider);
   return FavoritesDataSource(supabaseClient);
+});
+
+/// Anzahl der Nutzer, die eine Show favorisiert haben (family by showId)
+final favoriteShowCountProvider =
+    FutureProvider.family<int, String>((ref, showId) async {
+  final repository = ref.read(favoritesRepositoryProvider);
+  return GetFavoriteShowCount(repository).call(showId);
+});
+
+/// Provider für den `AddFavoriteCreator` Use Case
+final addFavoriteCreatorProvider = Provider<AddFavoriteCreator>((ref) {
+  final favoritesRepository = ref.read(favoritesRepositoryProvider);
+  return AddFavoriteCreator(favoritesRepository);
+});
+
+/// Provider für den `RemoveFavoriteCreator` Use Case
+final removeFavoriteCreatorProvider = Provider<RemoveFavoriteCreator>((ref) {
+  final favoritesRepository = ref.read(favoritesRepositoryProvider);
+  return RemoveFavoriteCreator(favoritesRepository);
+});
+
+/// Provider für den `IsFavoriteCreator` Use Case
+final isFavoriteCreatorProvider = Provider<IsFavoriteCreator>((ref) {
+  final favoritesRepository = ref.read(favoritesRepositoryProvider);
+  return IsFavoriteCreator(favoritesRepository);
 });

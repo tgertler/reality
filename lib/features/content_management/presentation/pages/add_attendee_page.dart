@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/widgets/loading/app_skeleton.dart';
 import '../providers/content_provider.dart';
 import '../../domain/entities/attendee.dart';
 import 'package:uuid/uuid.dart';
@@ -29,7 +30,11 @@ class _AddAttendeePageState extends ConsumerState<AddAttendeePage> {
 
     return Column(
       children: [
-        if (contentState.isLoading) CircularProgressIndicator(),
+        if (contentState.isLoading)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: AppSkeletonBox(width: double.infinity, height: 10),
+          ),
         if (contentState.errorMessage.isNotEmpty)
           Text('Error: ${contentState.errorMessage}', style: TextStyle(color: Colors.red)),
         TextField(

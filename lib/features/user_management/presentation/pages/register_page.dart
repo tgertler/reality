@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:g_recaptcha_v3/g_recaptcha_v3.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:frontend/core/utils/router.dart';
+import 'package:frontend/core/config/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+import '../providers/user_provider.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
@@ -13,216 +15,296 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _showEmailForm = false;
 
-  bool _isCaptchaVerified = false;
-
-  void _onCaptchaVerified(String token) {
-    setState(() {
-      _isCaptchaVerified = true;
-    });
-  }
-
-  void _onCaptchaExpired() {
-    setState(() {
-      _isCaptchaVerified = false;
-    });
-  }
-
-  Future<void> signUp() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (!_isCaptchaVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bitte vervollständigen Sie das Captcha'),
-        ),
-      );
-      return;
-    }
-
-    final email = _emailController.text;
-    final password = _passwordController.text;
-
+  Future<void> _signInWithApple() async {
     try {
-      // Versuche, den Benutzer zu registrieren
-      final response = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-      );
-
-      // Überprüfe, ob der Benutzer erfolgreich registriert wurde
-      if (response.user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden.',
-            ),
-            duration: Duration(seconds: 5),
-          ),
-        );
-
-        // Leere die Eingabefelder nach erfolgreicher Registrierung
-        _emailController.clear();
-        _passwordController.clear();
-        _confirmPasswordController.clear();
+      await ref.read(userNotifierProvider.notifier).signInWithApple();
+      if (mounted && ref.read(userNotifierProvider).user != null) {
+        context.pop();
       }
-    } on AuthException catch (e) {
-      // Behandle spezifische Authentifizierungsfehler
-      if (e.message.contains('email_exists')) {
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return;
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich an.',
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: ${e.message}'),
-          ),
+          SnackBar(content: Text('Apple Sign In fehlgeschlagen: ${e.message}')),
         );
       }
     } catch (e) {
-      // Behandle allgemeine Fehler
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ein Fehler ist aufgetreten')),
+        );
+      }
+    }
+  }
+
+  Future<void> _signUpWithEmail() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      await ref.read(userNotifierProvider.notifier).signUpUser(
+        _emailController.text,
+        _passwordController.text,
+        displayName: _nameController.text,
+      );
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text('Ein unerwarteter Fehler ist aufgetreten: ${e.toString()}'),
+        const SnackBar(
+          content: Text(
+            'Registrierung erfolgreich! Bitte bestätige deine E-Mail-Adresse.',
+          ),
+          duration: Duration(seconds: 5),
         ),
+      );
+      _nameController.clear();
+      _emailController.clear();
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+      setState(() => _showEmailForm = false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fehler bei Registrierung: ${e.toString()}')),
       );
     }
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(userNotifierProvider).isLoading;
+
     return Scaffold(
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         backgroundColor: const Color(0xFF121212),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            context.pop();
-          },
+          onPressed: () => context.pop(),
         ),
+        elevation: 0,
       ),
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 48),
+              Text(
+                'REGISTRIEREN',
+                style: GoogleFonts.montserrat(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 32,
+                  color: Colors.white,
+                  letterSpacing: -1.0,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(width: 60, height: 3, color: AppColors.pop),
+              const SizedBox(height: 8),
+              Text(
+                'Erstelle ein Konto um deine Shows zu verwalten.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: Colors.white54,
+                ),
+              ),
+              const SizedBox(height: 48),
+
+              // Apple Sign In Button
+              _AppleSignInButton(
+                label: 'Mit Apple registrieren',
+                onPressed: isLoading ? null : _signInWithApple,
+              ),
+
+              const SizedBox(height: 20),
+
+              // Divider
+              Row(
                 children: [
-                  const SizedBox(height: 100),
-                  const Text(
-                    'Registriere dich hier!',
-                    style: TextStyle(fontSize: 30),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    color: const Color.fromARGB(255, 248, 144, 231),
-                    width: 280,
-                    height: 2,
-                  ),
-                  const SizedBox(height: 40),
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'E-Mail',
-                      labelStyle: TextStyle(color: Colors.white),
-                    ),
-                    style: const TextStyle(color: Colors.white),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Bitte geben Sie Ihre E-Mail-Adresse ein';
-                      }
-                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                        return 'Bitte geben Sie eine gültige E-Mail-Adresse ein';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Passwort',
-                      labelStyle: TextStyle(color: Colors.white),
-                    ),
-                    obscureText: true,
-                    style: const TextStyle(color: Colors.white),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Bitte geben Sie Ihr Passwort ein';
-                      }
-                      if (value.length < 6) {
-                        return 'Das Passwort muss mindestens 6 Zeichen lang sein';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Passwort bestätigen',
-                      labelStyle: TextStyle(color: Colors.white),
-                    ),
-                    obscureText: true,
-                    style: const TextStyle(color: Colors.white),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Bitte bestätigen Sie Ihr Passwort';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Die Passwörter stimmen nicht überein';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await GRecaptchaV3.execute(
-                              '6LfVvfIqAAAAANFTnYwjA81Wlj_yrCbTUWxQISWX')
-                          .then((token) {
-                        if (token != null) {
-                          _onCaptchaVerified(token);
-                          signUp();
-                        } else {
-                          _onCaptchaExpired();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Captcha verification failed'),
-                            ),
-                          );
-                        }
-                      }).catchError((error) {
-                        _onCaptchaExpired();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Captcha verification failed'),
-                          ),
-                        );
-                      });
-                    },
-                    child: const Text(
-                      'Registrieren',
-                      style: TextStyle(color: Colors.white),
+                  Expanded(child: Divider(color: Colors.white12)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'oder',
+                      style: GoogleFonts.dmSans(
+                          color: Colors.white38, fontSize: 13),
                     ),
                   ),
+                  Expanded(child: Divider(color: Colors.white12)),
                 ],
               ),
-            ),
+
+              const SizedBox(height: 20),
+
+              if (!_showEmailForm)
+                GestureDetector(
+                  onTap: () => setState(() => _showEmailForm = true),
+                  child: Center(
+                    child: Text(
+                      'Mit E-Mail registrieren',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.white38,
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.white38,
+                      ),
+                    ),
+                  ),
+                ),
+
+              if (_showEmailForm) ...[
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Name',
+                          labelStyle: TextStyle(color: Colors.white54),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Name eingeben';
+                          }
+                          if (v.trim().length < 2) {
+                            return 'Mindestens 2 Zeichen';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _emailController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'E-Mail',
+                          labelStyle: TextStyle(color: Colors.white54),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'E-Mail eingeben';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
+                            return 'Ungültige E-Mail';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Passwort',
+                          labelStyle: TextStyle(color: Colors.white54),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Passwort eingeben';
+                          if (v.length < 6) {
+                            return 'Mindestens 6 Zeichen';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Passwort bestätigen',
+                          labelStyle: TextStyle(color: Colors.white54),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Passwort bestätigen';
+                          }
+                          if (v != _passwordController.text) {
+                            return 'Passwörter stimmen nicht überein';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : _signUpWithEmail,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.pop,
+                            foregroundColor: const Color(0xFF1E1E1E),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero,
+                            ),
+                          ),
+                          child: Text(
+                            'REGISTRIEREN',
+                            style: GoogleFonts.montserrat(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppleSignInButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final String label;
+  const _AppleSignInButton({required this.onPressed, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        height: 54,
+        color: Colors.white,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.apple, color: Colors.black, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

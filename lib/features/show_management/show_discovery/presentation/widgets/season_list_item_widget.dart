@@ -1,94 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/core/utils/router.dart';
-import 'package:go_router/go_router.dart';
+import 'package:frontend/core/config/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/season.dart';
 
 class SeasonListItemWidget extends StatelessWidget {
   final Season season;
+  final Color accentColor;
 
-  const SeasonListItemWidget({super.key, required this.season});
+  const SeasonListItemWidget({
+    super.key,
+    required this.season,
+    this.accentColor = AppColors.pop,
+  });
 
   @override
   Widget build(BuildContext context) {
     final year = DateFormat('yyyy').format(season.streamingReleaseDate);
-    return GestureDetector(
-      onTap: () {
-        context.push('${AppRoutes.seasonOverview}/${season.id}');
-      },
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: season.seasonNumber % 2 == 0
-              ? const Color.fromARGB(255, 30, 30, 30)
-              : const Color.fromARGB(255, 37, 37,
-                  37), // Unterschiedliche Farben für jede zweite Zeile
-          border: Border(
-            bottom: BorderSide(
-              color: Colors.grey[800]!,
-              width: 1,
+    final streamOpt = season.streamingOption.trim();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${season.seasonNumber}',
+              style: GoogleFonts.montserrat(
+                color: accentColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-        ),
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 15.0),
-              child: Text(
-                'Staffel ${season.seasonNumber}',
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Staffel ${season.seasonNumber} · $year · ${season.totalEpisodes} Episoden${streamOpt.isNotEmpty ? ' · $streamOpt' : ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.montserrat(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 5),
-            Padding(
-              padding: const EdgeInsets.only(left: 7.0, right: 7.0),
-              child: Container(
-                child: Icon(
-                  Icons.fiber_manual_record,
-                  size: 5,
-                  color: const Color.fromARGB(255, 213, 245, 245),
-                ),
-              ),
-            ),
-            Text(
-              year,
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 7.0, right: 7.0),
-              child: Container(
-                child: Icon(
-                  Icons.fiber_manual_record,
-                  size: 5,
-                  color: const Color.fromARGB(255, 213, 245, 245),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                '${season.totalEpisodes} Episode(n)',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: SizedBox(
-                width: 20,
-                child: Icon(Icons.chevron_right),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

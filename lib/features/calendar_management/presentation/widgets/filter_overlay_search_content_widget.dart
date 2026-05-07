@@ -3,6 +3,7 @@ Two sections are then shown as the columns. One for the show and one for the att
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/widgets/loading/app_skeleton.dart';
 import 'package:frontend/features/calendar_management/presentation/widgets/filter_overlay_search_attendee_card_widget.dart';
 import 'package:frontend/features/calendar_management/presentation/widgets/filter_overlay_search_show_card_widget.dart';
 import '../providers/filter_active_provider.dart';
@@ -28,7 +29,7 @@ class FilterOverlaySearchContentWidget extends ConsumerWidget {
           if (searchState.isLoading)
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
-              child: const Center(child: CircularProgressIndicator()),
+              child: const _FilterSearchSkeleton(),
             ),
           if (searchState.errorMessage.isNotEmpty)
             Center(
@@ -49,7 +50,8 @@ class FilterOverlaySearchContentWidget extends ConsumerWidget {
 
                       return FilterOverlaySearchShowCard(
                         id: result['data'].id,
-                        title: result['data'].title,
+                        title: result['data'].displayTitle,
+                        genre: result['data'].genre,
                         isToggled: isToggled,
                       );
                     }
@@ -70,6 +72,32 @@ class FilterOverlaySearchContentWidget extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterSearchSkeleton extends StatelessWidget {
+  const _FilterSearchSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: List.generate(
+          5,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                AppSkeletonBox(width: 42, height: 42, borderRadius: BorderRadius.all(Radius.circular(8))),
+                SizedBox(width: 10),
+                Expanded(child: AppSkeletonLines(lines: 2, height: 11, widths: [0.65, 0.35])),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

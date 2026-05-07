@@ -1,0 +1,54 @@
+include:
+  - lib/features/**
+
+layers:
+  # DOMAIN – fachlicher Kern, kennt niemanden
+  - name: domain
+    path: lib/features/**/domain/**
+
+  # DATA – technische Umsetzung
+  - name: data
+    path: lib/features/**/data/**
+    depends_on:
+      - domain
+
+  # PRESENTATION – UI & State
+  - name: presentation
+    path: lib/features/**/presentation/**
+    depends_on:
+      - domain
+
+rules:
+  # Domain darf kein Flutter kennen
+  - name: domain_no_flutter
+    description: Domain darf Flutter nicht importieren
+    from: lib/features/**/domain/**
+    forbid:
+      - flutter
+      - material
+      - cupertino
+
+  # Domain darf keine Infrastruktur kennen
+  - name: domain_no_data
+    description: Domain darf nicht auf Data oder Sources zugreifen
+    from: lib/features/**/domain/**
+    forbid:
+      - data
+      - sources
+      - supabase
+
+  # Presentation darf NICHT direkt auf Data oder Sources zugreifen
+  - name: presentation_no_data
+    description: Presentation darf nicht direkt auf Data oder Sources zugreifen
+    from: lib/features/**/presentation/**
+    forbid:
+      - data
+      - sources
+      - supabase
+
+  # Sources dürfen ausschließlich in data verwendet werden
+  - name: sources_only_in_data
+    description: Sources dürfen nur innerhalb der Data-Schicht verwendet werden
+    from: lib/features/**
+    allow:
+      - lib/features/**/data/sources/**

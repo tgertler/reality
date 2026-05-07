@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/core/utils/router.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
 class ShowCardWidget extends StatelessWidget {
@@ -23,11 +21,9 @@ class ShowCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    initializeDateFormatting('de_DE');
     final now = DateTime.now();
     final isLive = now.isAfter(startDatetime) && now.isBefore(endDatetime);
     final duration = endDatetime.difference(startDatetime).inMinutes;
-    final isFinished = now.isAfter(endDatetime);
 
 
     return GestureDetector(
@@ -106,6 +102,8 @@ class ShowCardWidget extends StatelessWidget {
 }
 
 class LiveIndicator extends StatefulWidget {
+  const LiveIndicator({super.key});
+
   @override
   _LiveIndicatorState createState() => _LiveIndicatorState();
 }

@@ -18,6 +18,7 @@ class ShowDataSource {
         .map((show) => Show(
               showId: show['id'],
               title: show['title'],
+              shortTitle: show['short_title'] as String?,
             ))
         .toList();
   }

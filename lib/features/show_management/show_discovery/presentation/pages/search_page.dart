@@ -3,7 +3,10 @@ Two sections are then shown as the columns. One for the show and one for the att
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/widgets/loading/app_skeleton.dart';
+import 'package:frontend/features/show_management/show_discovery/domain/entities/creator.dart';
 import 'package:frontend/features/show_management/show_discovery/presentation/providers/search_provider.dart';
+import 'package:frontend/features/show_management/show_discovery/presentation/widgets/search_creator_card_widget.dart';
 import 'package:frontend/features/show_management/show_discovery/presentation/widgets/search_show_card_widget.dart';
 
 import '../widgets/search_attendee_card_widget.dart';
@@ -41,7 +44,7 @@ class MainSearchOverlay extends ConsumerWidget {
               if (searchState.isLoading)
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
-                  child: const Center(child: CircularProgressIndicator()),
+                  child: const _SearchResultsSkeleton(),
                 ),
               if (searchState.errorMessage.isNotEmpty)
                 Center(
@@ -49,28 +52,65 @@ class MainSearchOverlay extends ConsumerWidget {
                         style: TextStyle(color: Colors.red))),
               if (!searchState.isLoading)
                 Expanded(
-                  child: ListView.builder(
-                    scrollDirection: Axis.vertical,
-                    itemCount: searchState.results.length,
-                    itemBuilder: (context, index) {
-                      final result = searchState.results[index];
-                      if (result['type'] == 'show') {
-                        return MainSearchShowCard(
-                          id: result['data'].id,
-                          title: result['data'].title,
-                        );
-                      }
-                      if (result['type'] == 'attendee') {
-                        return MainSearchAttendeeCard(
-                          id: result['data'].id,
-                          title: result['data'].name,
-                        );
-                      }
-                      return SizedBox
-                          .shrink(); // Return an empty widget if the type is neither 'show' nor 'attendee'
-                    },
-                  ),
+                  child: searchState.results.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Keine Treffer gefunden',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        )
+                      : ListView.builder(
+                          scrollDirection: Axis.vertical,
+                          itemCount: searchState.results.length,
+                          itemBuilder: (context, index) {
+                            final result = searchState.results[index];
+                            if (result['type'] == 'show') {
+                              return MainSearchShowCard(
+                                id: result['data'].id,
+                                title: result['data'].displayTitle,
+                                genre: result['data'].genre,
+                              );
+                            }
+                            if (result['type'] == 'attendee') {
+                              return MainSearchAttendeeCard(
+                                id: result['data'].id,
+                                title: result['data'].name,
+                              );
+                            }
+                            if (result['type'] == 'creator') {
+                              return MainSearchCreatorCard(
+                                creator: result['data'] as Creator,
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchResultsSkeleton extends StatelessWidget {
+  const _SearchResultsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        6,
+        (_) => Container(
+          color: const Color(0xFF121212),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          margin: const EdgeInsets.only(bottom: 6),
+          child: const Row(
+            children: [
+              AppSkeletonBox(width: 52, height: 52, borderRadius: BorderRadius.all(Radius.circular(8))),
+              SizedBox(width: 12),
+              Expanded(child: AppSkeletonLines(lines: 2, height: 12, widths: [0.7, 0.4])),
             ],
           ),
         ),
