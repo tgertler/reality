@@ -51,10 +51,16 @@ class BingoDatasource {
   }
 
   Future<BingoSessionView?> getActiveSession() async {
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null || currentUserId.isEmpty) {
+      return null;
+    }
+
     final row = await _supabaseClient
         .from('bingo_sessions')
         .select('id')
         .eq('status', 'ACTIVE')
+        .eq('created_by', currentUserId)
         .order('started_at', ascending: false)
         .limit(1)
         .maybeSingle();
@@ -81,17 +87,33 @@ class BingoDatasource {
 
     final bingoId = await _ensureBingoWithItems(showEventId);
 
-    final sessionRow = await _supabaseClient
-        .from('bingo_sessions')
-        .insert({
-          'bingo_id': bingoId,
-          'mode': 'WATCHPARTY',
-          'status': 'ACTIVE',
-          if (createdBy != null && createdBy.isNotEmpty)
-            'created_by': createdBy,
-        })
-        .select('id')
-        .single();
+    final PostgrestMap sessionRow;
+    try {
+      sessionRow = await _supabaseClient
+          .from('bingo_sessions')
+          .insert({
+            'bingo_id': bingoId,
+            'mode': 'WATCHPARTY',
+            'status': 'ACTIVE',
+            'phase': BingoSessionPhase.prestart.dbValue,
+            'countdown_started_at': DateTime.now().toUtc().toIso8601String(),
+            if (createdBy != null && createdBy.isNotEmpty)
+              'created_by': createdBy,
+          })
+          .select('id')
+          .single();
+    } on PostgrestException catch (e) {
+      if (e.code == '23503') {
+        // Foreign-key violation – the auth user no longer exists in the DB
+        // (e.g. after a local `supabase db reset`). Force a sign-out so the
+        // next launch prompts re-authentication.
+        await _supabaseClient.auth.signOut();
+        throw StateError(
+          'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.',
+        );
+      }
+      rethrow;
+    }
 
     final sessionId = sessionRow['id']?.toString() ?? '';
     if (sessionId.isEmpty) {
@@ -129,8 +151,161 @@ class BingoDatasource {
   Future<void> endSession(String sessionId) async {
     await _supabaseClient.from('bingo_sessions').update({
       'status': 'COMPLETED',
+      'phase': BingoSessionPhase.completed.dbValue,
       'ended_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', sessionId);
+  }
+
+  Future<void> markSessionLive(String sessionId) async {
+    await _supabaseClient.from('bingo_sessions').update({
+      'phase': BingoSessionPhase.live.dbValue,
+      'live_started_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', sessionId);
+  }
+
+  Future<void> saveLiveReaction({
+    required String sessionId,
+    required String showEventId,
+    required String userId,
+    required String emoji,
+    required BingoReactionAnchor anchor,
+    required int reactionOffsetSeconds,
+  }) async {
+    await _supabaseClient.from('bingo_session_reactions').insert({
+      'bingo_session_id': sessionId,
+      'show_event_id': showEventId,
+      'user_id': userId,
+      'emoji': emoji,
+      'anchor': anchor.dbValue,
+      'reaction_offset_seconds': reactionOffsetSeconds,
+    });
+  }
+
+  Future<BingoReactionFeedback> getReactionFeedback({
+    required String showEventId,
+    required String selectedEmoji,
+    required BingoReactionAnchor anchor,
+    required int reactionOffsetSeconds,
+  }) async {
+    final rows = await _queryNearbyReactions(
+      showEventId: showEventId,
+      anchor: anchor,
+      centerOffsetSeconds: reactionOffsetSeconds,
+    );
+
+    final counts = <String, int>{};
+    for (final raw in rows) {
+      final row = _asMap(raw);
+      final emoji = row['emoji']?.toString() ?? '';
+      if (emoji.isEmpty) continue;
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+    }
+
+    final totalResponses = counts.values.fold<int>(0, (sum, v) => sum + v);
+    final sameEmojiResponses = counts[selectedEmoji] ?? 0;
+    String? topOtherEmoji;
+    var topOtherCount = -1;
+
+    for (final entry in counts.entries) {
+      if (entry.key == selectedEmoji) continue;
+      if (entry.value > topOtherCount) {
+        topOtherEmoji = entry.key;
+        topOtherCount = entry.value;
+      }
+    }
+
+    return BingoReactionFeedback(
+      selectedEmoji: selectedEmoji,
+      totalResponses: totalResponses,
+      sameEmojiResponses: sameEmojiResponses,
+      topOtherEmoji: topOtherEmoji,
+      sameEmojiRate:
+          totalResponses == 0 ? 0 : (sameEmojiResponses / totalResponses),
+      createdAt: DateTime.now(),
+    );
+  }
+
+  Future<BingoCrowdReactionSnapshot> getCrowdReactionSnapshot({
+    required String showEventId,
+    required BingoReactionAnchor anchor,
+    required int reactionOffsetSeconds,
+  }) async {
+    final rows = await _queryNearbyReactions(
+      showEventId: showEventId,
+      anchor: anchor,
+      centerOffsetSeconds: reactionOffsetSeconds,
+    );
+
+    final counts = <String, int>{};
+    for (final raw in rows) {
+      final row = _asMap(raw);
+      final emoji = row['emoji']?.toString() ?? '';
+      if (emoji.isEmpty) continue;
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+    }
+
+    String? topEmoji;
+    var topCount = 0;
+    for (final entry in counts.entries) {
+      if (entry.value > topCount) {
+        topEmoji = entry.key;
+        topCount = entry.value;
+      }
+    }
+
+    final sampleCount = counts.values.fold<int>(0, (sum, value) => sum + value);
+
+    return BingoCrowdReactionSnapshot(
+      emoji: topEmoji,
+      sampleCount: sampleCount,
+      anchor: anchor,
+      reactionOffsetSeconds: reactionOffsetSeconds,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  Future<BingoReactionTimelineRecap> getReactionTimelineRecap({
+    required String sessionId,
+    required String showEventId,
+    required String userId,
+  }) async {
+    final ownRows = await _supabaseClient
+        .from('bingo_session_reactions')
+        .select('emoji, anchor, reaction_offset_seconds, created_at')
+        .eq('bingo_session_id', sessionId)
+        .eq('user_id', userId)
+        .order('reaction_offset_seconds', ascending: true);
+
+    final points = <BingoReactionTimelinePoint>[];
+
+    for (final raw in (ownRows as List)) {
+      final row = _asMap(raw);
+      final emoji = row['emoji']?.toString() ?? '';
+      final anchor = _parseAnchor(row['anchor']?.toString());
+      final offset = row['reaction_offset_seconds'] as int? ?? 0;
+      if (emoji.isEmpty) continue;
+
+      final feedback = await getReactionFeedback(
+        showEventId: showEventId,
+        selectedEmoji: emoji,
+        anchor: anchor,
+        reactionOffsetSeconds: offset,
+      );
+
+      points.add(
+        BingoReactionTimelinePoint(
+          emoji: emoji,
+          anchor: anchor,
+          offsetSeconds: offset,
+          feedback: feedback,
+        ),
+      );
+    }
+
+    return BingoReactionTimelineRecap(
+      sessionId: sessionId,
+      points: points,
+    );
   }
 
   Future<void> setSessionItemChecked(
@@ -200,7 +375,8 @@ class BingoDatasource {
   }) async {
     final rows = await _supabaseClient
         .from('bingo_session_emotions')
-        .select('bingo_session_id, user_id, phase, dimension, emoji, created_at')
+        .select(
+            'bingo_session_id, user_id, phase, dimension, emoji, created_at')
         .eq('bingo_session_id', sessionId)
         .eq('user_id', userId)
         .eq('phase', BingoEmotionPhase.expectation.dbValue);
@@ -212,7 +388,8 @@ class BingoDatasource {
         .toList();
   }
 
-  Future<BingoEmotionReflectionView> getEmotionReflection(String showEventId) async {
+  Future<BingoEmotionReflectionView> getEmotionReflection(
+      String showEventId) async {
     final bingoRows = await _supabaseClient
         .from('bingos')
         .select('id')
@@ -276,7 +453,8 @@ class BingoDatasource {
       showEventId: showEventId,
       expectationByDimension: expectationReflections,
       afterglow: BingoAfterglowReflection(
-        distribution: _buildDistribution(afterglowCounts, kBingoAfterglowOptions),
+        distribution:
+            _buildDistribution(afterglowCounts, kBingoAfterglowOptions),
       ),
     );
   }
@@ -335,9 +513,8 @@ class BingoDatasource {
         .where((row) => row['bingo_achieved'] == true)
         .length;
 
-    final bingoRate = sessionIds.isNotEmpty
-        ? sessionsWithBingo / sessionIds.length
-        : 0.0;
+    final bingoRate =
+        sessionIds.isNotEmpty ? sessionsWithBingo / sessionIds.length : 0.0;
 
     final sessionItemsRows = await _supabaseClient
         .from('bingo_session_items')
@@ -356,7 +533,8 @@ class BingoDatasource {
 
     final itemRows = await _supabaseClient
         .from('bingo_items')
-        .select('id, position_index, bingo_phrases(text), bingo_event_types(key)')
+        .select(
+            'id, position_index, bingo_phrases(text), bingo_event_types(key)')
         .inFilter('id', clickCounts.keys.toList())
         .order('position_index', ascending: true);
 
@@ -456,7 +634,8 @@ class BingoDatasource {
 
     final itemRows = await _supabaseClient
         .from('bingo_items')
-        .select('id, position_index, bingo_phrases(text), bingo_event_types(key)')
+        .select(
+            'id, position_index, bingo_phrases(text), bingo_event_types(key)')
         .inFilter('bingo_id', bingoIds)
         .order('position_index', ascending: true);
 
@@ -475,8 +654,7 @@ class BingoDatasource {
           clickCount: clickCount,
           positionIndex: row['position_index'] as int? ?? entries.length,
           eventTypeKey: eventTypeMap['key']?.toString(),
-          relativeFrequency:
-              totalClicks > 0 ? clickCount / totalClicks : 0.0,
+          relativeFrequency: totalClicks > 0 ? clickCount / totalClicks : 0.0,
         ),
       );
     }
@@ -496,7 +674,7 @@ class BingoDatasource {
     final sessionRow = await _supabaseClient
         .from('bingo_sessions')
         .select(
-        'id, bingo_id, mode, status, started_at, ended_at, bingos!inner(show_event_id), created_by')
+            'id, bingo_id, mode, status, started_at, ended_at, countdown_started_at, live_started_at, phase, bingos!inner(show_event_id), created_by')
         .eq('id', sessionId)
         .maybeSingle();
 
@@ -545,7 +723,8 @@ class BingoDatasource {
           eventTypeKey: eventTypeMap['key']?.toString(),
           checked: sessionItem['checked_at'] != null,
           checkedAt: sessionItem['checked_at'] != null
-              ? DateTime.tryParse(sessionItem['checked_at'].toString())?.toLocal()
+              ? DateTime.tryParse(sessionItem['checked_at'].toString())
+                  ?.toLocal()
               : null,
         ),
       );
@@ -565,9 +744,46 @@ class BingoDatasource {
       endedAt: sessionRow['ended_at'] != null
           ? DateTime.tryParse(sessionRow['ended_at'].toString())?.toLocal()
           : null,
+      countdownStartedAt: sessionRow['countdown_started_at'] != null
+          ? DateTime.tryParse(sessionRow['countdown_started_at'].toString())
+              ?.toLocal()
+          : null,
+      liveStartedAt: sessionRow['live_started_at'] != null
+          ? DateTime.tryParse(sessionRow['live_started_at'].toString())
+              ?.toLocal()
+          : null,
+      phase: _parseSessionPhase(sessionRow['phase']?.toString()),
       status: sessionRow['status']?.toString() ?? 'ACTIVE',
       boardItems: board,
     );
+  }
+
+  Future<List<dynamic>> _queryNearbyReactions({
+    required String showEventId,
+    required BingoReactionAnchor anchor,
+    required int centerOffsetSeconds,
+  }) async {
+    final windows = <int>[240, 360, 600];
+
+    for (final range in windows) {
+      final minOffset = centerOffsetSeconds - range;
+      final maxOffset = centerOffsetSeconds + range;
+      final safeMin = minOffset < 0 ? 0 : minOffset;
+
+      final rows = await _supabaseClient
+          .from('bingo_session_reactions')
+          .select('emoji')
+          .eq('show_event_id', showEventId)
+          .eq('anchor', anchor.dbValue)
+          .gte('reaction_offset_seconds', safeMin)
+          .lte('reaction_offset_seconds', maxOffset);
+
+      if ((rows as List).length >= 5 || range == windows.last) {
+        return rows;
+      }
+    }
+
+    return const <dynamic>[];
   }
 
   Future<BingoSessionStatsView?> getSessionStats(String sessionId) async {
@@ -625,7 +841,8 @@ class BingoDatasource {
     if (sessionIds.isNotEmpty) {
       final statsRows = await _supabaseClient
           .from('bingo_session_stats')
-          .select('bingo_session_id, bingo_achieved, time_to_bingo_seconds, fields_at_bingo')
+          .select(
+              'bingo_session_id, bingo_achieved, time_to_bingo_seconds, fields_at_bingo')
           .inFilter('bingo_session_id', sessionIds);
 
       for (final raw in (statsRows as List)) {
@@ -648,7 +865,8 @@ class BingoDatasource {
 
       final statsRow = statsBySessionId[sessionId];
       final statsBingoAchieved = statsRow?['bingo_achieved'] == true;
-      final bingoAchieved = statsRow == null ? view.bingoReached : statsBingoAchieved;
+      final bingoAchieved =
+          statsRow == null ? view.bingoReached : statsBingoAchieved;
       final timeToBingoSeconds = _toDouble(statsRow?['time_to_bingo_seconds']);
       final fieldsAtBingo = statsRow?['fields_at_bingo'] as int?;
       final stars = _computeHistoryStars(
@@ -681,7 +899,6 @@ class BingoDatasource {
 
   Future<String> _ensureBingoWithItems(String showEventId) async {
     Object? lastError;
-
     for (final _ in const [20, 16]) {
       try {
         final rpcResult = await _supabaseClient.rpc(
@@ -724,6 +941,139 @@ class BingoDatasource {
           : 'Bingo konnte nicht erzeugt werden: ${lastError.toString()}',
     );
   }
+
+  // ── Global history (all completed sessions for a user) ───────────────────
+
+  Future<List<GlobalBingoHistoryEntry>> getUserBingoGlobalHistory(
+      String userId) async {
+    if (userId.isEmpty) return const [];
+
+    // 1. Completed sessions for this user
+    final sessions = await _supabaseClient
+        .from('bingo_sessions')
+        .select('id, status, started_at, ended_at, bingo_id')
+        .eq('created_by', userId)
+        .eq('status', 'COMPLETED')
+        .order('started_at', ascending: false)
+        .limit(50);
+
+    if ((sessions as List).isEmpty) return const [];
+
+    final sessionIds = (sessions as List)
+        .map((raw) => _asMap(raw)['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList();
+
+    final bingoIds = (sessions as List)
+        .map((raw) => _asMap(raw)['bingo_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+
+    // 2. Show info via bingos -> show_events -> shows
+    final bingoRows = await _supabaseClient
+        .from('bingos')
+        .select(
+            'id, show_events(episode_number, season_number, shows(title, short_title))')
+        .inFilter('id', bingoIds);
+
+    final showInfoByBingoId = <String, Map<String, dynamic>>{};
+    for (final raw in (bingoRows as List)) {
+      final row = _asMap(raw);
+      final bingoId = row['id']?.toString();
+      if (bingoId != null && bingoId.isNotEmpty) {
+        showInfoByBingoId[bingoId] = row;
+      }
+    }
+
+    // 3. Stats for all sessions
+    final statsRows = await _supabaseClient
+        .from('bingo_session_stats')
+        .select(
+            'bingo_session_id, bingo_achieved, time_to_bingo_seconds, fields_at_bingo, score')
+        .inFilter('bingo_session_id', sessionIds);
+
+    final statsBySessionId = <String, Map<String, dynamic>>{};
+    for (final raw in (statsRows as List)) {
+      final row = _asMap(raw);
+      final id = row['bingo_session_id']?.toString();
+      if (id != null && id.isNotEmpty) {
+        statsBySessionId[id] = row;
+      }
+    }
+
+    // 4. Build entries
+    final result = <GlobalBingoHistoryEntry>[];
+    for (final raw in (sessions as List)) {
+      final row = _asMap(raw);
+      final sessionId = row['id']?.toString() ?? '';
+      if (sessionId.isEmpty) continue;
+
+      final bingoId = row['bingo_id']?.toString() ?? '';
+      final bingoInfo = showInfoByBingoId[bingoId] ?? const {};
+      final showEventsMap = _asMap(bingoInfo['show_events']);
+      final showsMap = _asMap(showEventsMap['shows']);
+
+      final showTitle = showsMap['short_title']?.toString().trim().isNotEmpty ==
+              true
+          ? showsMap['short_title'].toString().trim()
+          : (showsMap['title']?.toString().trim().isNotEmpty == true
+              ? showsMap['title'].toString().trim()
+              : 'Unbekannte Show');
+      final episodeNumber = showEventsMap['episode_number'] as int?;
+      final seasonNumber = showEventsMap['season_number'] as int?;
+
+      final statsRow = statsBySessionId[sessionId];
+      final bingoAchieved = statsRow?['bingo_achieved'] == true;
+      final timeToBingoSeconds = _toDouble(statsRow?['time_to_bingo_seconds']);
+      final fieldsAtBingo = statsRow?['fields_at_bingo'] as int?;
+      final score = _toDouble(statsRow?['score']);
+      final stars = _computeHistoryStars(
+        bingoAchieved: bingoAchieved,
+        timeToBingoSeconds: timeToBingoSeconds,
+        fieldsAtBingo: fieldsAtBingo,
+        checkedCount: fieldsAtBingo ?? 0,
+      );
+
+      result.add(GlobalBingoHistoryEntry(
+        sessionId: sessionId,
+        showTitle: showTitle,
+        episodeNumber: episodeNumber,
+        seasonNumber: seasonNumber,
+        startedAt:
+            DateTime.parse(row['started_at'].toString()).toLocal(),
+        endedAt: row['ended_at'] != null
+            ? DateTime.tryParse(row['ended_at'].toString())?.toLocal()
+            : null,
+        bingoReached: bingoAchieved,
+        timeToBingoSeconds: timeToBingoSeconds,
+        fieldsAtBingo: fieldsAtBingo,
+        score: score,
+        stars: stars,
+      ));
+    }
+
+    return result;
+  }
+
+  // ── Aggregated personal stats (RPC) ────────────────────────────────────────
+
+  Future<UserBingoStatsView> getUserBingoStats(String userId) async {
+    if (userId.isEmpty) return UserBingoStatsView.empty();
+
+    final result = await _supabaseClient.rpc(
+      'fn_get_user_bingo_stats',
+      params: {'p_user_id': userId},
+    );
+
+    if (result == null) return UserBingoStatsView.empty();
+
+    final map = _asMap(result);
+    if (map.isEmpty) return UserBingoStatsView.empty();
+
+    return UserBingoStatsView.fromJson(map);
+  }
+
 
   Future<String> _resolveBingoId(String showEventId, dynamic rpcResult) async {
     return _extractBingoId(rpcResult) ??
@@ -783,6 +1133,28 @@ class BingoDatasource {
     if (value == null) return null;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString());
+  }
+
+  BingoSessionPhase _parseSessionPhase(String? rawValue) {
+    final normalized = rawValue?.trim().toUpperCase();
+    if (normalized == BingoSessionPhase.live.dbValue) {
+      return BingoSessionPhase.live;
+    }
+    if (normalized == BingoSessionPhase.completed.dbValue) {
+      return BingoSessionPhase.completed;
+    }
+    return BingoSessionPhase.prestart;
+  }
+
+  BingoReactionAnchor _parseAnchor(String? rawValue) {
+    final normalized = rawValue?.trim().toUpperCase();
+    if (normalized == BingoReactionAnchor.middle.dbValue) {
+      return BingoReactionAnchor.middle;
+    }
+    if (normalized == BingoReactionAnchor.end.dbValue) {
+      return BingoReactionAnchor.end;
+    }
+    return BingoReactionAnchor.beginning;
   }
 
   int _computeHistoryStars({

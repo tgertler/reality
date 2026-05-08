@@ -7,7 +7,10 @@ import 'package:frontend/core/providers/push_notification_preferences_provider.d
 import 'package:frontend/core/utils/router.dart';
 import 'package:frontend/core/widgets/loading/app_skeleton.dart';
 import 'package:frontend/core/widgets/not_logged_in_widget.dart';
-import 'package:frontend/features/premium_management/presentation/providers/premium_waitlist_provider.dart';
+import 'package:frontend/features/bingo_management/presentation/pages/bingo_history_screen.dart';
+import 'package:frontend/features/bingo_management/presentation/pages/bingo_personal_stats_screen.dart';
+import 'package:frontend/features/premium_management/presentation/pages/paywall_screen.dart';
+import 'package:frontend/features/premium_management/presentation/providers/premium_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -838,11 +841,12 @@ class _PremiumSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final waitlistState = ref.watch(premiumWaitlistNotifierProvider);
+    final premiumState = ref.watch(premiumNotifierProvider);
+    final isPremium = premiumState.isPremium;
 
-    if (userId.isNotEmpty && !waitlistState.hasChecked && !waitlistState.isLoading) {
+    if (userId.isNotEmpty && !premiumState.hasChecked && !premiumState.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(premiumWaitlistNotifierProvider.notifier).checkStatus(userId);
+        ref.read(premiumNotifierProvider.notifier).refreshStatus();
       });
     }
 
@@ -870,11 +874,11 @@ class _PremiumSection extends ConsumerWidget {
                 width: double.infinity,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                color: const Color(0xFFFFE600),
+                color: isPremium ? const Color(0xFFFFE600) : Colors.black,
                 child: Text(
-                  'PREMIUM KOMMT BALD',
+                  isPremium ? 'PREMIUM AKTIV' : 'UNSCRIPTED PREMIUM',
                   style: GoogleFonts.montserrat(
-                    color: Colors.black,
+                    color: isPremium ? Colors.black : const Color(0xFFFFE600),
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.6,
@@ -888,7 +892,9 @@ class _PremiumSection extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Erhalte noch tiefere Einblicke in dein Profil!',
+                      isPremium
+                          ? 'Deine Premium-Features sind aktiv.'
+                          : 'Erhalte noch tiefere Einblicke in dein Profil!',
                       style: GoogleFonts.dmSans(
                         color: Colors.black87,
                         fontSize: 13,
@@ -898,55 +904,37 @@ class _PremiumSection extends ConsumerWidget {
                     const SizedBox(height: 12),
                     if (userId.isEmpty)
                       Text(
-                        'Melde dich an, um dich für Premium vorzumerken.',
+                        'Melde dich an, um Premium freizuschalten.',
                         style: GoogleFonts.dmSans(
                             color: Colors.black45, fontSize: 12),
                       )
-                    else if (waitlistState.isLoading && !waitlistState.hasChecked)
+                    else if (premiumState.isLoading && !premiumState.hasChecked)
                       const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.black),
                       )
-                    else if (waitlistState.isOnWaitlist)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 11, horizontal: 14),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFFE600),
-                          border: Border.fromBorderSide(
-                            BorderSide(color: Colors.black, width: 2),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black, offset: Offset(3, 3)),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.check_circle_rounded,
-                                color: Colors.black, size: 16),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Du bist vorgemerkt',
-                              style: GoogleFonts.montserrat(
-                                color: Colors.black,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
+                    else if (isPremium) ...[
+                      _PremiumFeatureButton(
+                        icon: Icons.history_rounded,
+                        label: 'Session-Historie',
+                        onTap: () => BingoHistoryScreen.open(context),
+                      ),
+                      const SizedBox(height: 8),
+                      _PremiumFeatureButton(
+                        icon: Icons.bar_chart_rounded,
+                        label: 'Persönliche Statistiken',
+                        onTap: () => BingoPersonalStatsScreen.open(context),
+                      ),
+                    ] else
                       GestureDetector(
-                        onTap: waitlistState.isLoading
+                        onTap: premiumState.isLoading
                             ? null
-                            : () => ref
-                                .read(premiumWaitlistNotifierProvider.notifier)
-                                .joinWaitlist(userId),
+                            : () => PaywallScreen.open(
+                                  context,
+                                  sourceFeature: 'premium_profile',
+                                ),
                         child: Transform.rotate(
                           angle: 0.01,
                           child: Container(
@@ -967,7 +955,7 @@ class _PremiumSection extends ConsumerWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                if (waitlistState.isLoading)
+                                if (premiumState.isLoading)
                                   const SizedBox(
                                     width: 13,
                                     height: 13,
@@ -980,9 +968,9 @@ class _PremiumSection extends ConsumerWidget {
                                       size: 16, color: Color(0xFFFFE600)),
                                 const SizedBox(width: 8),
                                 Text(
-                                  waitlistState.isLoading
-                                      ? 'Wird eingetragen…'
-                                      : 'FÜR PREMIUM VORMERKEN',
+                                  premiumState.isLoading
+                                      ? 'Wird geladen…'
+                                      : 'PREMIUM FREISCHALTEN',
                                   style: GoogleFonts.montserrat(
                                     color: const Color(0xFFFFE600),
                                     fontSize: 12,
@@ -1000,6 +988,54 @@ class _PremiumSection extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumFeatureButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _PremiumFeatureButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          border: Border.all(color: Colors.black, width: 1.5),
+          boxShadow: const [
+            BoxShadow(color: Color(0xFFFFE600), offset: Offset(3, 3)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: const Color(0xFFFFE600)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 12, color: Colors.white38),
+          ],
         ),
       ),
     );

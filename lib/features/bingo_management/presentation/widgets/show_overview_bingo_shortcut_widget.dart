@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/config/app_colors.dart';
 import 'package:frontend/core/utils/router.dart';
 import 'package:frontend/features/calendar_management/domain/entities/calendar_event_with_show.dart';
+import 'package:frontend/features/premium_management/domain/entities/premium_required_exception.dart';
+import 'package:frontend/features/premium_management/presentation/pages/paywall_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/features/calendar_management/presentation/providers/show_events_provider.dart';
 import 'package:frontend/features/bingo_management/presentation/providers/bingo_session_provider.dart';
@@ -219,13 +221,24 @@ class ShowOverviewBingoShortcutWidget extends ConsumerWidget {
                               );
                               return;
                             }
-                            await ref
-                                .read(bingoSessionProvider.notifier)
-                                .startSessionForShowEvent(
-                                  targetShowEventId!,
-                                  userId: userId,
-                                  openOverlay: true,
+                            try {
+                              await ref
+                                  .read(bingoSessionProvider.notifier)
+                                  .startSessionForShowEvent(
+                                    targetShowEventId!,
+                                    userId: userId,
+                                    openOverlay: true,
+                                  );
+                            } on PremiumRequiredException catch (e) {
+                              if (context.mounted) {
+                                await PaywallScreen.open(
+                                  context,
+                                  sourceFeature: e.feature,
+                                  sourceMessage: e.message,
                                 );
+                              }
+                              return;
+                            }
 
                             final started =
                                 ref.read(bingoSessionProvider).activeSession !=

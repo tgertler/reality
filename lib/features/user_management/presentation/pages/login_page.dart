@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/config/app_colors.dart';
+import 'package:frontend/core/utils/router.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -18,7 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final bool _showEmailForm = false;
+  bool _showEmailForm = false;
 
   Future<void> _signInWithApple() async {
     try {
@@ -120,39 +121,37 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
               const SizedBox(height: 20),
 
-              // // Divider
-              // Row(
-              //   children: [
-              //     Expanded(child: Divider(color: Colors.white12)),
-              //     Padding(
-              //       padding: const EdgeInsets.symmetric(horizontal: 12),
-              //       child: Text(
-              //         'oder',
-              //         style: GoogleFonts.dmSans(color: Colors.white38, fontSize: 13),
-              //       ),
-              //     ),
-              //     Expanded(child: Divider(color: Colors.white12)),
-              //   ],
-              // ),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.white12)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'oder',
+                      style: GoogleFonts.dmSans(color: Colors.white38, fontSize: 13),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.white12)),
+                ],
+              ),
 
-              // const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-              // // Toggle E-Mail form
-              // if (!_showEmailForm)
-              //   GestureDetector(
-              //     onTap: () => setState(() => _showEmailForm = true),
-              //     child: Center(
-              //       child: Text(
-              //         'Mit E-Mail anmelden',
-              //         style: GoogleFonts.dmSans(
-              //           color: Colors.white38,
-              //           fontSize: 14,
-              //           decoration: TextDecoration.underline,
-              //           decorationColor: Colors.white38,
-              //         ),
-              //       ),
-              //     ),
-              //   ),
+              if (!_showEmailForm)
+                GestureDetector(
+                  onTap: () => setState(() => _showEmailForm = true),
+                  child: Center(
+                    child: Text(
+                      'Mit E-Mail anmelden',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.white38,
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.white38,
+                      ),
+                    ),
+                  ),
+                ),
 
               if (_showEmailForm) ...[
                 Form(
@@ -213,19 +212,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ],
 
-              // const SizedBox(height: 32),
-              // Center(
-              //   child: TextButton(
-              //     onPressed: () => context.push(AppRoutes.register),
-              //     child: Text(
-              //       'Noch kein Konto? Registrieren',
-              //       style: GoogleFonts.dmSans(
-              //         color: Colors.white38,
-              //         fontSize: 13,
-              //       ),
-              //     ),
-              //   ),
-              // ),
+              const SizedBox(height: 32),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push(AppRoutes.register),
+                  child: Text(
+                    'Noch kein Konto? Registrieren',
+                    style: GoogleFonts.dmSans(
+                      color: Colors.white38,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

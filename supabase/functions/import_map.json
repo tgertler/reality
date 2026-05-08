@@ -1,0 +1,6 @@
+{
+    "imports": {
+        "https://esm.sh/": "https://esm.sh/",
+        "jsr:@supabase/functions-js": "https://esm.sh/@supabase/functions-js"
+    }
+}

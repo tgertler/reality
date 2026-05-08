@@ -85,9 +85,9 @@ class BingoFeaturePromoFeedCard extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                     children: [
-                      const TextSpan(text: 'Hab mehr Spaß bei deiner '),
+                      const TextSpan(text: 'Probier unsere'),
                       TextSpan(
-                        text: 'Watchparty',
+                        text: ' Watchparty',
                         style: GoogleFonts.dmSans(
                           color: Colors.black,
                           fontSize: 22,
@@ -96,7 +96,7 @@ class BingoFeaturePromoFeedCard extends StatelessWidget {
                         ),
                       ),
                       const TextSpan(
-                        text: ' - jetzt auf jeder Folge verfügbar.',
+                        text: ' aus - jetzt auf jeder Folge verfügbar.',
                       ),
                     ],
                   ),

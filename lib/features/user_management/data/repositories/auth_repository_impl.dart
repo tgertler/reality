@@ -1,3 +1,4 @@
+import 'package:frontend/core/notifications/push_notification_service.dart';
 import 'package:frontend/core/utils/logger.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -76,6 +77,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> signOut() async {
     _logger.i('Starting signOut');
     try {
+      // Deactivate the push device record while the session is still valid.
+      // This must happen before auth.signOut(), otherwise auth.uid() is null
+      // and the RLS policy on user_devices rejects the write (42501).
+      await PushNotificationService.instance.deactivateForSignOut();
       await supabaseClient.auth.signOut();
       _logger.i('Successfully signed out user');
     } catch (e, stackTrace) {

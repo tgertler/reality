@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/premium_waitlist_provider.dart';
 import 'package:frontend/features/user_management/presentation/providers/user_provider.dart';
+import '../pages/paywall_screen.dart';
+import '../providers/premium_provider.dart';
 
 // ── PremiumTeaseBlock ─────────────────────────────────────────────────────────
 //
@@ -32,12 +33,13 @@ class PremiumTeaseBlock extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(userNotifierProvider).user;
-    final waitlistState = ref.watch(premiumWaitlistNotifierProvider);
+    final premiumState = ref.watch(premiumNotifierProvider);
+    final profile = ref.watch(userNotifierProvider).profile;
+    final isPremium = premiumState.isPremium || (profile?.isPremium ?? false);
 
-    // Trigger status check once user is known
-    if (user != null && !waitlistState.hasChecked && !waitlistState.isLoading) {
+    if (user != null && !premiumState.hasChecked && !premiumState.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(premiumWaitlistNotifierProvider.notifier).checkStatus(user.id);
+        ref.read(premiumNotifierProvider.notifier).refreshStatus();
       });
     }
 
@@ -69,7 +71,7 @@ class PremiumTeaseBlock extends ConsumerWidget {
                   // const Text('✨', style: TextStyle(fontSize: 13)),
                   // const SizedBox(width: 8),
                   Text(
-                    'PREMIUM KOMMT BALD',
+                    isPremium ? 'UNSCRIPTED Premium AKTIV' : 'UNSCRIPTED Premium',
                     style: GoogleFonts.montserrat(
                       color: Colors.black,
                       fontSize: 11,
@@ -93,10 +95,16 @@ class PremiumTeaseBlock extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: user == null
                   ? _NotLoggedInHint()
-                  : _WaitlistButton(
-                      userId: user.id,
-                      isOnWaitlist: waitlistState.isOnWaitlist,
-                      isLoading: waitlistState.isLoading,
+                  : _PremiumButton(
+                      isPremium: isPremium,
+                      isLoading: premiumState.isLoading,
+                      onTap: () async {
+                        if (isPremium) return;
+                        await PaywallScreen.open(
+                          context,
+                          sourceFeature: 'premium_tease',
+                        );
+                      },
                     ),
             ),
           ],
@@ -159,20 +167,20 @@ class _LockedRow extends StatelessWidget {
 
 // ── _WaitlistButton ────────────────────────────────────────────────────────────
 
-class _WaitlistButton extends ConsumerWidget {
-  final String userId;
-  final bool isOnWaitlist;
+class _PremiumButton extends StatelessWidget {
+  final bool isPremium;
   final bool isLoading;
+  final VoidCallback onTap;
 
-  const _WaitlistButton({
-    required this.userId,
-    required this.isOnWaitlist,
+  const _PremiumButton({
+    required this.isPremium,
     required this.isLoading,
+    required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (isOnWaitlist) {
+  Widget build(BuildContext context) {
+    if (isPremium) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
@@ -190,7 +198,7 @@ class _WaitlistButton extends ConsumerWidget {
             const Icon(Icons.check_circle_rounded, color: Colors.black, size: 16),
             const SizedBox(width: 8),
             Text(
-              'Du bist vorgemerkt',
+              'Premium ist aktiv',
               style: GoogleFonts.montserrat(
                 color: Colors.black,
                 fontSize: 13,
@@ -203,11 +211,7 @@ class _WaitlistButton extends ConsumerWidget {
     }
 
     return GestureDetector(
-      onTap: isLoading
-          ? null
-          : () => ref
-              .read(premiumWaitlistNotifierProvider.notifier)
-              .joinWaitlist(userId),
+      onTap: isLoading ? null : onTap,
       child: Transform.rotate(
         angle: 0.01,
         child: Container(
@@ -237,7 +241,7 @@ class _WaitlistButton extends ConsumerWidget {
                     size: 16, color: Color(0xFFFFE600)),
               const SizedBox(width: 8),
               Text(
-                isLoading ? 'Wird eingetragen…' : 'FÜR PREMIUM VORMERKEN',
+                isLoading ? 'Wird geladen...' : 'JETZT HOLEN',
                 style: GoogleFonts.montserrat(
                   color: const Color(0xFFFFE600),
                   fontSize: 12,
@@ -259,7 +263,7 @@ class _NotLoggedInHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Melde dich an, um dich vorzumerken',
+      'Melde dich an, um Premium freizuschalten',
       style: GoogleFonts.dmSans(
         color: Colors.black45,
         fontSize: 12,
@@ -279,15 +283,15 @@ class PremiumStatusBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(premiumWaitlistNotifierProvider);
+    final state = ref.watch(premiumNotifierProvider);
 
     if (!state.hasChecked && !state.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(premiumWaitlistNotifierProvider.notifier).checkStatus(userId);
+        ref.read(premiumNotifierProvider.notifier).refreshStatus();
       });
     }
 
-    if (state.isLoading && !state.hasChecked) {
+    if (state.isLoading) {
       return const SizedBox(
         width: 14,
         height: 14,
@@ -295,12 +299,12 @@ class PremiumStatusBadge extends ConsumerWidget {
       );
     }
 
-    if (state.isOnWaitlist) {
+    if (state.isPremium) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         color: const Color(0xFF9C4DFF).withValues(alpha: 0.18),
         child: Text(
-          '✅ Vorgemerkt',
+          '✅ Premium',
           style: GoogleFonts.montserrat(
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -315,7 +319,7 @@ class PremiumStatusBadge extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       color: Colors.white.withValues(alpha: 0.06),
       child: Text(
-        'Noch nicht vorgemerkt',
+        'Kostenlos',
         style: GoogleFonts.montserrat(
           fontSize: 10,
           fontWeight: FontWeight.w700,

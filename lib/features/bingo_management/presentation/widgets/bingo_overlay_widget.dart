@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' show sqrt;
 import 'dart:ui' as ui;
 
@@ -6,14 +7,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cross_file/cross_file.dart';
 import 'package:frontend/core/config/app_colors.dart';
 import 'package:frontend/core/widgets/loading/app_skeleton.dart';
 import 'package:frontend/features/bingo_management/domain/entities/bingo_models.dart';
 import 'package:frontend/features/bingo_management/presentation/providers/bingo_session_provider.dart';
 import 'package:frontend/features/bingo_management/presentation/widgets/bingo_help_button.dart';
 import 'package:frontend/features/bingo_management/presentation/widgets/bingo_run_summary_sheet.dart';
-import 'package:frontend/features/premium_management/presentation/providers/premium_waitlist_provider.dart';
+import 'package:frontend/features/premium_management/domain/entities/premium_required_exception.dart';
+import 'package:frontend/features/premium_management/presentation/pages/paywall_screen.dart';
 import 'package:frontend/features/user_management/presentation/providers/user_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
@@ -46,11 +47,78 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
   final List<GlobalKey> _recapCardKeys =
       List<GlobalKey>.generate(8, (_) => GlobalKey());
   final GlobalKey _userBoardShareKey = GlobalKey();
+  final List<_FloatingLiveReaction> _floatingReactions =
+      <_FloatingLiveReaction>[];
+  Timer? _feedbackOverlayTimer;
+  DateTime? _lastFeedbackCreatedAt;
+  String? _crowdFeedbackOverlayMessage;
+  bool _showCrowdFeedbackOverlay = false;
 
   @override
   void dispose() {
+    _feedbackOverlayTimer?.cancel();
     _reflectionPageController.dispose();
     super.dispose();
+  }
+
+  void _showCrowdFeedbackAsOverlay(BingoReactionFeedback feedback) {
+    _feedbackOverlayTimer?.cancel();
+    setState(() {
+      _crowdFeedbackOverlayMessage = feedback.message;
+      _showCrowdFeedbackOverlay = true;
+    });
+
+    _feedbackOverlayTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (!mounted) return;
+      setState(() {
+        _showCrowdFeedbackOverlay = false;
+      });
+    });
+  }
+
+  void _emitFloatingReaction(String emoji, int emojiIndex) {
+    final entry = _FloatingLiveReaction(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      emoji: emoji,
+      emojiIndex: emojiIndex,
+    );
+
+    setState(() {
+      _floatingReactions.add(entry);
+    });
+
+    Future<void>.delayed(const Duration(milliseconds: 1150), () {
+      if (!mounted) return;
+      setState(() {
+        _floatingReactions.removeWhere((item) => item.id == entry.id);
+      });
+    });
+  }
+
+  void _onLiveReactionTap({
+    required String emoji,
+    required int emojiIndex,
+    required String? userId,
+    required bool canReact,
+  }) async {
+    if (!canReact || userId == null) return;
+
+    _emitFloatingReaction(emoji, emojiIndex);
+    try {
+      await ref.read(bingoSessionProvider.notifier).sendLiveReaction(
+            emoji: emoji,
+            userId: userId,
+          );
+    } on PremiumRequiredException catch (e) {
+      if (!mounted) return;
+      final currentContext = context;
+      // ignore: use_build_context_synchronously
+      await PaywallScreen.open(
+        currentContext,
+        sourceFeature: e.feature,
+        sourceMessage: e.message,
+      );
+    }
   }
 
   bool _isQuoteItem(String phrase, String? eventTypeKey) {
@@ -215,11 +283,23 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
       await notifier.endActiveSession();
     }
 
-    await notifier.startSessionForShowEvent(
-      session.showEventId,
-      userId: userId,
-      openOverlay: true,
-    );
+    try {
+      await notifier.startSessionForShowEvent(
+        session.showEventId,
+        userId: userId,
+        openOverlay: true,
+      );
+    } on PremiumRequiredException catch (e) {
+      if (!mounted) return;
+      final currentContext = context;
+      // ignore: use_build_context_synchronously
+      await PaywallScreen.open(
+        currentContext,
+        sourceFeature: e.feature,
+        sourceMessage: e.message,
+      );
+      return;
+    }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -271,11 +351,13 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
     if (cardIndex < 0 || cardIndex >= _recapCardKeys.length) return;
 
     final key = _recapCardKeys[cardIndex];
-    final boundary = key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    final boundary =
+        key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Karte konnte gerade nicht geteilt werden.')),
+        const SnackBar(
+            content: Text('Karte konnte gerade nicht geteilt werden.')),
       );
       return;
     }
@@ -299,17 +381,20 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Teilen fehlgeschlagen. Bitte erneut probieren.')),
+        const SnackBar(
+            content: Text('Teilen fehlgeschlagen. Bitte erneut probieren.')),
       );
     }
   }
 
   Future<void> _shareUserBingoBoard() async {
-    final boundary = _userBoardShareKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    final boundary = _userBoardShareKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
     if (boundary == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bingo-Board konnte gerade nicht geteilt werden.')),
+        const SnackBar(
+            content: Text('Bingo-Board konnte gerade nicht geteilt werden.')),
       );
       return;
     }
@@ -333,26 +418,24 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Teilen fehlgeschlagen. Bitte erneut probieren.')),
+        const SnackBar(
+            content: Text('Teilen fehlgeschlagen. Bitte erneut probieren.')),
       );
     }
   }
-
 
   void _syncLocalOverlayState({
     required bool isOverlayOpen,
     String? sessionId,
   }) {
-    final shouldClearForClosedOverlay =
-        !isOverlayOpen &&
+    final shouldClearForClosedOverlay = !isOverlayOpen &&
         (_showInlineSummary ||
             _inlineSummarySessionId != null ||
             _inlineSummaryData != null ||
             _tappedExpectationEmoji != null ||
             _tappedAfterglowEmoji != null ||
             _isCelebratingBingo);
-    final shouldClearForDifferentSession =
-        sessionId != null &&
+    final shouldClearForDifferentSession = sessionId != null &&
         _inlineSummarySessionId != null &&
         _inlineSummarySessionId != sessionId;
 
@@ -399,6 +482,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
     switch (state.flowStep) {
       case BingoSessionFlowStep.expectation:
         return _buildExpectationStep(state, session, isActiveSessionOpen);
+      case BingoSessionFlowStep.prestart:
+        return _buildPrestartStep(state);
       case BingoSessionFlowStep.afterglow:
         return _buildAfterglowStep(isActiveSessionOpen);
       case BingoSessionFlowStep.reflection:
@@ -455,13 +540,12 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
             item.phrase,
             item.eventTypeKey,
           );
-            final cellBgColor = item.checked
+          final cellBgColor = item.checked
               ? const ui.Color.fromARGB(159, 46, 74, 77)
               : const Color(0xFF171717);
-            final cellTextColor = Colors.white;
-            final cellBorderColor = item.checked
-              ? const Color(0xFF7FAEB0)
-              : const Color(0xFF2B2B2B);
+          final cellTextColor = Colors.white;
+          final cellBorderColor =
+              item.checked ? const Color(0xFF7FAEB0) : const Color(0xFF2B2B2B);
 
           return Material(
             color: Colors.transparent,
@@ -488,7 +572,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: item.checked ? 0.55 : 0.35),
+                      color: Colors.black
+                          .withValues(alpha: item.checked ? 0.55 : 0.35),
                       offset: const Offset(1, 1),
                       blurRadius: 0,
                     ),
@@ -529,8 +614,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                               'Zitat',
                               style: GoogleFonts.montserrat(
                                 color: item.checked
-                                  ? Colors.white70
-                                  : Colors.white54,
+                                    ? Colors.white70
+                                    : Colors.white54,
                                 fontSize: 8,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.7,
@@ -602,6 +687,229 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPrestartStep(BingoSessionState state) {
+    final countdownValue = state.liveCountdownValue;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Session startet',
+            style: GoogleFonts.montserrat(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            countdownValue == null ? '3-2-1' : '$countdownValue',
+            style: GoogleFonts.montserrat(
+              color: AppColors.secondary,
+              fontSize: 96,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -3,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Gleich geht das Bingo los.',
+            style: GoogleFonts.dmSans(
+              color: Colors.white70,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveReactionBar(
+      BingoSessionState state, BingoSessionView session) {
+    final userId = ref.read(userNotifierProvider).user?.id;
+    final canReact = userId != null && session.phase == BingoSessionPhase.live;
+    const emojis = ['🔥', '😱', '😬', '😂', '🙄', '💀'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 48,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Wrap(
+                spacing: 3,
+                children: [
+                  for (final entry in emojis.asMap().entries)
+                    InkWell(
+                      onTap: !canReact
+                          ? null
+                          : () => _onLiveReactionTap(
+                                emoji: entry.value,
+                                emojiIndex: entry.key,
+                                userId: userId,
+                                canReact: canReact,
+                              ),
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                            // color: canReact
+                            //     ? Colors.white.withValues(alpha: 0.08)
+                            //     : Colors.white.withValues(alpha: 0.03),
+                            // border: Border.all(
+                            //   color: Colors.white12,
+                            //   width: 1.2,
+                            // ),
+                            ),
+                        child: Text(
+                          entry.value,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              IgnorePointer(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    for (final reaction in _floatingReactions)
+                      Positioned(
+                        left: reaction.emojiIndex * 40.0 + 7,
+                        bottom: 0,
+                        child: _FloatingReactionBubble(emoji: reaction.emoji),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openSoftResyncSheet(BingoSessionState state) async {
+    if (!mounted) return;
+
+    final selected = await showModalBottomSheet<BingoReactionAnchor>(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Soft Re-Sync',
+                  style: GoogleFonts.montserrat(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Wo bist du ungefaehr in der Folge?',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white60,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (final anchor in BingoReactionAnchor.values)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).pop(anchor),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: state.selectedReactionAnchor == anchor
+                              ? AppColors.secondary
+                              : Colors.white.withValues(alpha: 0.06),
+                          border: Border.all(
+                            color: state.selectedReactionAnchor == anchor
+                                ? Colors.black
+                                : Colors.white12,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          anchor.label,
+                          style: GoogleFonts.dmSans(
+                            color: state.selectedReactionAnchor == anchor
+                                ? Colors.black
+                                : Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null) return;
+    final notifier = ref.read(bingoSessionProvider.notifier);
+    notifier.setReactionAnchor(selected);
+    await notifier.refreshLiveCrowdReaction();
+  }
+
+  Widget _buildResyncButton(BingoSessionState state) {
+    return Transform.rotate(
+      angle: -0.015,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openSoftResyncSheet(state),
+          borderRadius: BorderRadius.circular(2),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.black, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.8),
+                  offset: const Offset(2.5, 2.5),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.sync,
+              size: 18,
+              color: Colors.black,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -707,17 +1015,28 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                           ),
                         ),
                         child: InkWell(
-                          onTap: () {
+                          onTap: () async {
                             HapticFeedback.mediumImpact();
                             setState(
                                 () => _tappedExpectationEmoji = option.emoji);
-                            ref
-                                .read(bingoSessionProvider.notifier)
-                                .selectExpectation(
-                                  dimension: dimension.key,
-                                  emoji: option.emoji,
-                                  userId: userId,
-                                );
+                            try {
+                              await ref
+                                  .read(bingoSessionProvider.notifier)
+                                  .selectExpectation(
+                                    dimension: dimension.key,
+                                    emoji: option.emoji,
+                                    userId: userId,
+                                  );
+                            } on PremiumRequiredException catch (e) {
+                              if (!mounted) return;
+                              final currentContext = context;
+                              // ignore: use_build_context_synchronously
+                              await PaywallScreen.open(
+                                currentContext,
+                                sourceFeature: e.feature,
+                                sourceMessage: e.message,
+                              );
+                            }
                             Future<void>.delayed(
                                 const Duration(milliseconds: 250), () {
                               if (mounted) {
@@ -883,12 +1202,26 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                     onTap: () async {
                       HapticFeedback.heavyImpact();
                       setState(() => _tappedAfterglowEmoji = option.emoji);
-                      await ref
-                          .read(bingoSessionProvider.notifier)
-                          .finishActiveSessionWithAfterglow(
-                            userId: userId,
-                            emoji: option.emoji,
+                      try {
+                        await ref
+                            .read(bingoSessionProvider.notifier)
+                            .finishActiveSessionWithAfterglow(
+                              userId: userId,
+                              emoji: option.emoji,
+                            );
+                      } on PremiumRequiredException catch (e) {
+                        if (context.mounted) {
+                          await PaywallScreen.open(
+                            context,
+                            sourceFeature: e.feature,
+                            sourceMessage: e.message,
                           );
+                        }
+                        if (mounted) {
+                          setState(() => _tappedAfterglowEmoji = null);
+                        }
+                        return;
+                      }
                       final opened =
                           ref.read(bingoSessionProvider).openedSession;
                       if (opened != null) {
@@ -898,17 +1231,17 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                       if (mounted) setState(() => _tappedAfterglowEmoji = null);
                     },
                     child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 1.2,
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.2,
+                          ),
                         ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      alignment: Alignment.centerLeft,
-                      child: RichText(
-                        text: TextSpan(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        alignment: Alignment.centerLeft,
+                        child: RichText(
+                          text: TextSpan(
                             children: [
                               WidgetSpan(
                                 alignment: PlaceholderAlignment.middle,
@@ -951,13 +1284,15 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
 
     _ensureRecapDeckFocusForSession(session.sessionId);
 
-    final journeyPre = resolveBingoJourneyPreSummary(state.expectationSelections);
+    final journeyPre =
+        resolveBingoJourneyPreSummary(state.expectationSelections);
     final userAfterglowEmoji = state.afterglowEmoji;
     final expectationByDimension = reflection.expectationByDimension;
     final afterglowCrowd = reflection.afterglow.distribution;
     final recapTitle = _buildRecapDeckTitle(session);
     final hasExpectationAnswers = state.expectationSelections.isNotEmpty;
-    final hasAfterglowAnswer = userAfterglowEmoji != null && userAfterglowEmoji.isNotEmpty;
+    final hasAfterglowAnswer =
+        userAfterglowEmoji != null && userAfterglowEmoji.isNotEmpty;
 
     final recapPages = <Widget>[];
 
@@ -1047,6 +1382,22 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
         },
       ),
     );
+
+    if (state.reactionTimelineRecap != null &&
+        state.reactionTimelineRecap!.hasData) {
+      final reactionTimelinePageIndex = recapPages.length;
+      addRecapPage(
+        cardLabel: 'reaction_player',
+        child: _ReactionTimelinePlayerCard(
+          deckTitle: recapTitle,
+          recap: state.reactionTimelineRecap!,
+          onShare: () => _shareRecapCardAsImage(
+            cardIndex: reactionTimelinePageIndex,
+            cardLabel: 'reaction_player',
+          ),
+        ),
+      );
+    }
 
     final episodeRecapPageIndex = recapPages.length;
     addRecapPage(
@@ -1152,7 +1503,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                   height: MediaQuery.of(context).size.height * 0.92,
                   decoration: BoxDecoration(
                     color: const Color(0xFF0E0E0E),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.45),
@@ -1193,7 +1545,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                             const Spacer(),
                             IconButton(
                               onPressed: notifier.closeOverlay,
-                              icon: const Icon(Icons.close, color: Colors.white54),
+                              icon: const Icon(Icons.close,
+                                  color: Colors.white54),
                             ),
                           ],
                         ),
@@ -1218,20 +1571,23 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const AppSkeletonBox(height: 36, width: double.infinity),
+                          const AppSkeletonBox(
+                              height: 36, width: double.infinity),
                           const SizedBox(height: 6),
                           const AppSkeletonBox(height: 36, width: 200),
                           const SizedBox(height: 8),
                           const AppSkeletonBox(height: 16, width: 220),
                           const SizedBox(height: 20),
-                          ...List.generate(3, (i) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: AppSkeletonBox(
-                              height: 72,
-                              width: double.infinity,
-                              borderRadius: BorderRadius.zero,
-                            ),
-                          )),
+                          ...List.generate(
+                              3,
+                              (i) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: AppSkeletonBox(
+                                      height: 72,
+                                      width: double.infinity,
+                                      borderRadius: BorderRadius.zero,
+                                    ),
+                                  )),
                         ],
                       ],
                     ),
@@ -1249,6 +1605,15 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
         activeSessionId == session.sessionId && session.isActive;
     final flowStep = state.flowStep;
     final isLiveStep = flowStep == BingoSessionFlowStep.live;
+
+    final feedback = state.lastReactionFeedback;
+    if (feedback != null && feedback.createdAt != _lastFeedbackCreatedAt) {
+      _lastFeedbackCreatedAt = feedback.createdAt;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showCrowdFeedbackAsOverlay(feedback);
+      });
+    }
 
     if (isLiveStep) {
       _scheduleRunSummaryCheck(session, isActiveSessionOpen);
@@ -1421,7 +1786,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                                                     'Bingo begleitet dich live durch die Episode. Du sammelst typische Momente und Zitate aus genau dieser Folge, bis eine Reihe, Spalte oder Diagonale voll ist.',
                                                 usage:
                                                     'Session starten, live beim Schauen abhaken und die Runde nach der Episode wieder über die Historie nachvollziehen.',
-                                                accentColor: AppColors.secondary,
+                                                accentColor:
+                                                    AppColors.secondary,
                                                 steps: const [
                                                   'Starte die Session zu Beginn der Episode oder sobald du aktiv mitschauen willst.',
                                                   'Markiere Felder nur für Ereignisse, die in dieser Folge wirklich passieren.',
@@ -1485,8 +1851,12 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                                                               .live ||
                                                       flowStep ==
                                                           BingoSessionFlowStep
+                                                              .prestart ||
+                                                      flowStep ==
+                                                          BingoSessionFlowStep
                                                               .summary
                                                   ? 'Fortschritt: ${session.checkedCount} / ${session.totalCount}'
+                                                      // ' · ${_formatSessionElapsed(session)}'
                                                   : flowStep ==
                                                           BingoSessionFlowStep
                                                               .expectation
@@ -1495,7 +1865,7 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                                                               BingoSessionFlowStep
                                                                   .afterglow
                                                           ? 'Afterglow'
-                                                      : 'Deine Story mit der Folge',
+                                                          : 'Deine Story mit der Folge',
                                               style: GoogleFonts.dmSans(
                                                 color: Colors.white60,
                                                 fontSize: 13,
@@ -1504,6 +1874,8 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                                           ],
                                         ),
                                       ),
+                                      if (flowStep == BingoSessionFlowStep.live)
+                                        _buildResyncButton(state),
                                       // IconButton(
                                       //   onPressed: notifier.closeOverlay,
                                       //   padding: EdgeInsets.zero,
@@ -1520,22 +1892,22 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                               ),
                               if (!_showInlineSummary &&
                                   flowStep == BingoSessionFlowStep.live)
-                                const _PremiumBingoBanner(),
-                              if (state.errorMessage != null)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(10),
-                                    color: Colors.red.withValues(alpha: 0.16),
-                                    child: Text(
-                                      state.errorMessage!,
-                                      style: GoogleFonts.dmSans(
-                                          color: Colors.redAccent),
+                                //const _PremiumBingoBanner(),
+                                if (state.errorMessage != null)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(10),
+                                      color: Colors.red.withValues(alpha: 0.16),
+                                      child: Text(
+                                        state.errorMessage!,
+                                        style: GoogleFonts.dmSans(
+                                            color: Colors.redAccent),
+                                      ),
                                     ),
                                   ),
-                                ),
                               Expanded(
                                 child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 420),
@@ -1563,114 +1935,159 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
                                   flowStep == BingoSessionFlowStep.live)
                                 Padding(
                                   padding:
-                                      const EdgeInsets.fromLTRB(16, 4, 16, 35),
-                                  child: Row(
+                                      const EdgeInsets.fromLTRB(16, 4, 16, 50),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 10),
-                                          child: Text(
-                                            session.bingoReached
-                                                ? 'Bingo erreicht 🎉'
-                                                : 'Noch kein Bingo',
-                                            style: GoogleFonts.dmSans(
-                                              color: session.bingoReached
-                                                  ? AppColors.secondary
-                                                  : Colors.white70,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              decoration: TextDecoration.none,
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Expanded(
+                                            child: _buildLiveReactionBar(
+                                              state,
+                                              session,
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Transform.rotate(
-                                        angle: -0.012,
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            onTap: isActiveSessionOpen
-                                                ? () {
-                                                    ref
-                                                        .read(
-                                                            bingoSessionProvider
-                                                                .notifier)
-                                                        .openAfterglowStep();
-                                                  }
-                                                : null,
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                  milliseconds: 150),
-                                              curve: Curves.easeOut,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 9,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isActiveSessionOpen
-                                                    ? const Color(0xFFFFE45C)
-                                                    : const Color(0xFF2A2A2A),
-                                                border:
-                                                    const Border.fromBorderSide(
-                                                  BorderSide(
-                                                    color: Colors.black,
-                                                    width: 2,
+                                          const SizedBox(width: 10),
+                                          Transform.rotate(
+                                            angle: -0.012,
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: isActiveSessionOpen
+                                                    ? () {
+                                                        ref
+                                                            .read(
+                                                                bingoSessionProvider
+                                                                    .notifier)
+                                                            .openAfterglowStep();
+                                                      }
+                                                    : null,
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(
+                                                      milliseconds: 150),
+                                                  curve: Curves.easeOut,
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 9,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: isActiveSessionOpen
+                                                        ? const Color(
+                                                            0xFFFFE45C)
+                                                        : const Color(
+                                                            0xFF2A2A2A),
+                                                    border: const Border
+                                                        .fromBorderSide(
+                                                      BorderSide(
+                                                        color: Colors.black,
+                                                        width: 2,
+                                                      ),
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                                alpha:
+                                                                    isActiveSessionOpen
+                                                                        ? 0.9
+                                                                        : 0.45),
+                                                        offset:
+                                                            const Offset(3, 3),
+                                                        blurRadius: 0,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        isActiveSessionOpen
+                                                            ? Icons.flag_rounded
+                                                            : Icons
+                                                                .history_rounded,
+                                                        size: 15,
+                                                        color:
+                                                            isActiveSessionOpen
+                                                                ? Colors.black
+                                                                : Colors
+                                                                    .white54,
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        isActiveSessionOpen
+                                                            ? 'FOLGE VORBEI'
+                                                            : 'NUR HISTORIE',
+                                                        style: GoogleFonts
+                                                            .montserrat(
+                                                          color:
+                                                              isActiveSessionOpen
+                                                                  ? Colors.black
+                                                                  : Colors
+                                                                      .white54,
+                                                          fontSize: 10.5,
+                                                          fontWeight:
+                                                              FontWeight.w900,
+                                                          letterSpacing: 0.6,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.black
-                                                        .withValues(
-                                                            alpha:
-                                                                isActiveSessionOpen
-                                                                    ? 0.9
-                                                                    : 0.45),
-                                                    offset: const Offset(3, 3),
-                                                    blurRadius: 0,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    isActiveSessionOpen
-                                                        ? Icons.flag_rounded
-                                                        : Icons.history_rounded,
-                                                    size: 15,
-                                                    color: isActiveSessionOpen
-                                                        ? Colors.black
-                                                        : Colors.white54,
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    isActiveSessionOpen
-                                                        ? 'FOLGE VORBEI'
-                                                        : 'NUR HISTORIE',
-                                                    style:
-                                                        GoogleFonts.montserrat(
-                                                      color: isActiveSessionOpen
-                                                          ? Colors.black
-                                                          : Colors.white54,
-                                                      fontSize: 10.5,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      letterSpacing: 0.6,
-                                                    ),
-                                                  ),
-                                                ],
                                               ),
                                             ),
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
                                 ),
                             ],
+                          ),
+                          Positioned(
+                            left: 18,
+                            right: 18,
+                            bottom: 112,
+                            child: IgnorePointer(
+                              child: AnimatedSlide(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOut,
+                                offset: _showCrowdFeedbackOverlay
+                                    ? Offset.zero
+                                    : const Offset(0, 0.2),
+                                child: AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 160),
+                                  opacity: _showCrowdFeedbackOverlay ? 1 : 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.74),
+                                      border: Border.all(
+                                        color: Colors.white12,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _crowdFeedbackOverlayMessage ?? '',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.dmSans(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                           if (_isCelebratingBingo)
                             const Positioned.fill(
@@ -1687,88 +2104,6 @@ class _BingoOverlayWidgetState extends ConsumerState<BingoOverlayWidget> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Premium Bingo Banner ──────────────────────────────────────────────────────
-
-class _PremiumBingoBanner extends ConsumerWidget {
-  const _PremiumBingoBanner();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(userNotifierProvider).user;
-    final waitlistState = ref.watch(premiumWaitlistNotifierProvider);
-
-    if (user != null && !waitlistState.hasChecked && !waitlistState.isLoading) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(premiumWaitlistNotifierProvider.notifier).checkStatus(user.id);
-      });
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: AppColors.secondary.withValues(alpha: 0.10),
-          border: const Border(
-            left: BorderSide(color: AppColors.secondary, width: 2.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            const Text('✨', style: TextStyle(fontSize: 12)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Premium: Bingo-Karten für Love Island & mehr',
-                style: GoogleFonts.dmSans(
-                  color: AppColors.secondary,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (waitlistState.isOnWaitlist)
-              const Icon(Icons.check_circle_rounded,
-                  size: 14, color: AppColors.secondary)
-            else
-              GestureDetector(
-                onTap: user == null || waitlistState.isLoading
-                    ? null
-                    : () => ref
-                        .read(premiumWaitlistNotifierProvider.notifier)
-                        .joinWaitlist(user.id),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  color: AppColors.secondary.withValues(alpha: 0.22),
-                  child: waitlistState.isLoading
-                      ? const SizedBox(
-                          width: 10,
-                          height: 10,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: AppColors.secondary),
-                        )
-                      : Text(
-                          'Vormerken',
-                          style: GoogleFonts.montserrat(
-                            color: AppColors.secondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -2168,7 +2503,8 @@ class _PreVsCrowdCard extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0xFFFAF8FF),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.8), width: 2),
+          border:
+              Border.all(color: Colors.black.withValues(alpha: 0.8), width: 2),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
@@ -2319,9 +2655,8 @@ class _PreVsCrowdCard extends StatelessWidget {
 
                     // Matched blocks: teal bg, black text
                     // Unmatched: white bg, black border
-                    final bgColor = isMatch
-                        ? AppColors.secondary
-                        : const Color(0xFFFFFEFF);
+                    final bgColor =
+                        isMatch ? AppColors.secondary : const Color(0xFFFFFEFF);
                     final borderColor = Colors.black;
                     final labelColor = Colors.black;
                     final sublabelColor = Colors.black54;
@@ -2375,8 +2710,7 @@ class _PreVsCrowdCard extends StatelessWidget {
                             ],
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
                               'vs',
                               style: GoogleFonts.montserrat(
@@ -2562,7 +2896,8 @@ class _PostVsCrowdCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sorted = [...afterglowEntries]..sort((a, b) => b.count.compareTo(a.count));
+    final sorted = [...afterglowEntries]
+      ..sort((a, b) => b.count.compareTo(a.count));
     final visible = _pickCloudEntries(
       sorted,
       afterglowEmoji,
@@ -2579,7 +2914,8 @@ class _PostVsCrowdCard extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0xFFFAF8FF),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.8), width: 2),
+          border:
+              Border.all(color: Colors.black.withValues(alpha: 0.8), width: 2),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
@@ -2742,7 +3078,16 @@ class _AfterglowEmotionCloud extends StatelessWidget {
 
   static const List<double> _xDrift = [0, -10, 12, -8, 10, 0, -6, 8];
   static const List<double> _yDrift = [0, -7, -3, 5, 8, 12, 10, 14];
-  static const List<double> _tilt = [0.0, -0.08, 0.07, -0.06, 0.05, -0.03, 0.04, -0.05];
+  static const List<double> _tilt = [
+    0.0,
+    -0.08,
+    0.07,
+    -0.06,
+    0.05,
+    -0.03,
+    0.04,
+    -0.05
+  ];
 
   static double _emojiSize(double share) {
     final size = 26.0 + sqrt(share.clamp(0.0, 1.0)) * 88.0;
@@ -2783,14 +3128,16 @@ class _AfterglowEmotionCloud extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     final entry = sorted[i];
-                    final isUser = userEmoji != null && entry.emoji == userEmoji;
+                    final isUser =
+                        userEmoji != null && entry.emoji == userEmoji;
                     final (fx, fy) = _positions[i];
                     final emojiSize = _emojiSize(entry.share);
                     final bubbleSize = emojiSize + 22;
-                    final left =
-                        (fx * w - bubbleSize / 2 + _xDrift[i]).clamp(0.0, w - bubbleSize);
-                    final top = (fy * _cloudHeight - bubbleSize / 2 + _yDrift[i])
-                        .clamp(0.0, _cloudHeight - bubbleSize - 14);
+                    final left = (fx * w - bubbleSize / 2 + _xDrift[i])
+                        .clamp(0.0, w - bubbleSize);
+                    final top =
+                        (fy * _cloudHeight - bubbleSize / 2 + _yDrift[i])
+                            .clamp(0.0, _cloudHeight - bubbleSize - 14);
 
                     return Positioned(
                       left: left,
@@ -2822,7 +3169,8 @@ class _AfterglowEmotionCloud extends StatelessWidget {
                               ),
                               child: Text(
                                 entry.emoji,
-                                style: TextStyle(fontSize: emojiSize, height: 1.0),
+                                style:
+                                    TextStyle(fontSize: emojiSize, height: 1.0),
                               ),
                             ),
                           ),
@@ -2884,7 +3232,7 @@ class _RunSummaryDeckCard extends StatelessWidget {
               ? 'BINGO.\nSTARKER RUN.'
               : 'KEIN BINGO.\nNÄCHSTES MAL.'),
       accentColor: const ui.Color.fromARGB(255, 255, 255, 255),
-      backgroundColor: const ui.Color.fromARGB(255, 32, 32, 32),
+      backgroundColor: Colors.white,
       showBlob: false,
       onShare: onShare,
       onShareBoard: onShareBoard,
@@ -2948,7 +3296,8 @@ class _RunSummaryDeckCard extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.dashboard_outlined, color: Color(0xFFFFE600), size: 18),
+                        const Icon(Icons.dashboard_outlined,
+                            color: Color(0xFFFFE600), size: 18),
                         const SizedBox(width: 10),
                         Text(
                           'MEIN BOARD TEILEN',
@@ -2970,7 +3319,8 @@ class _RunSummaryDeckCard extends StatelessWidget {
   }
 
   List<Widget> _buildTopFields(BuildContext context) {
-    final sorted = [...checkedItems]..sort((a, b) => a.positionIndex.compareTo(b.positionIndex));
+    final sorted = [...checkedItems]
+      ..sort((a, b) => a.positionIndex.compareTo(b.positionIndex));
     final top3 = sorted.take(3).toList();
     return [
       Text(
@@ -2996,7 +3346,8 @@ class _RunSummaryDeckCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFE600),
                     border: Border(
-                      top: BorderSide(color: Colors.black, width: idx == 0 ? 1.5 : 0),
+                      top: BorderSide(
+                          color: Colors.black, width: idx == 0 ? 1.5 : 0),
                       left: const BorderSide(color: Colors.black, width: 1.5),
                       bottom: const BorderSide(color: Colors.black, width: 1.5),
                       right: BorderSide.none,
@@ -3014,14 +3365,18 @@ class _RunSummaryDeckCard extends StatelessWidget {
                 ),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFAF8FF),
                       border: Border(
-                        top: BorderSide(color: Colors.black, width: idx == 0 ? 1.5 : 0),
+                        top: BorderSide(
+                            color: Colors.black, width: idx == 0 ? 1.5 : 0),
                         left: const BorderSide(color: Colors.black, width: 1.5),
-                        right: const BorderSide(color: Colors.black, width: 1.5),
-                        bottom: const BorderSide(color: Colors.black, width: 1.5),
+                        right:
+                            const BorderSide(color: Colors.black, width: 1.5),
+                        bottom:
+                            const BorderSide(color: Colors.black, width: 1.5),
                       ),
                     ),
                     child: Row(
@@ -3077,6 +3432,805 @@ class _RunSummaryDeckCard extends StatelessWidget {
   }
 }
 
+class _ReactionTimelinePlayerCard extends StatefulWidget {
+  final String deckTitle;
+  final BingoReactionTimelineRecap recap;
+  final VoidCallback onShare;
+
+  const _ReactionTimelinePlayerCard({
+    required this.deckTitle,
+    required this.recap,
+    required this.onShare,
+  });
+
+  @override
+  State<_ReactionTimelinePlayerCard> createState() =>
+      _ReactionTimelinePlayerCardState();
+}
+
+class _ReactionTimelinePlayerCardState
+    extends State<_ReactionTimelinePlayerCard> with TickerProviderStateMixin {
+  Ticker? _ticker;
+  Duration _lastElapsed = Duration.zero;
+  Duration _holdUntilElapsed = Duration.zero;
+  int _activeIndex = 0;
+  List<_DisplayReactionPoint> _displayPoints = const [];
+  double _playheadSeconds = 0;
+  int _nextEventIndex = 0;
+  bool _isFinished = false;
+
+  static const Duration _eventHold = Duration(milliseconds: 700);
+  static const int _clusterWindowSeconds = 6;
+  // Adaptive per-session, set in _prepareTimeline:
+  double _adaptedBaseSpeed = 4.2;
+  double _adaptedContextWindowSeconds = 12.0;
+  double _totalDurationSeconds = 0;
+  double _smoothedCenterOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareTimeline();
+    _startAutoPlay();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReactionTimelinePlayerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.recap.sessionId != widget.recap.sessionId) {
+      _prepareTimeline();
+      _startAutoPlay();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.dispose();
+    super.dispose();
+  }
+
+  void _prepareTimeline() {
+    final source = [...widget.recap.points]
+      ..sort((a, b) => a.offsetSeconds.compareTo(b.offsetSeconds));
+
+    if (source.isEmpty) {
+      _displayPoints = const [];
+      _activeIndex = 0;
+      _playheadSeconds = 0;
+      _nextEventIndex = 0;
+      _holdUntilElapsed = Duration.zero;
+      return;
+    }
+
+    final clustered = <_DisplayReactionPoint>[];
+    for (final point in source) {
+      if (clustered.isEmpty) {
+        clustered.add(_DisplayReactionPoint(point: point, mergedCount: 1));
+        continue;
+      }
+
+      final last = clustered.last;
+      final distance = point.offsetSeconds - last.point.offsetSeconds;
+
+      if (distance <= _clusterWindowSeconds) {
+        final representative =
+            point.feedback.totalResponses >= last.point.feedback.totalResponses
+                ? point
+                : last.point;
+        clustered[clustered.length - 1] = _DisplayReactionPoint(
+          point: representative,
+          mergedCount: last.mergedCount + 1,
+        );
+      } else {
+        clustered.add(_DisplayReactionPoint(point: point, mergedCount: 1));
+      }
+    }
+
+    _displayPoints = clustered;
+    _activeIndex = 0;
+    _nextEventIndex = clustered.length > 1 ? 1 : 0;
+    _playheadSeconds = clustered.first.point.offsetSeconds.toDouble();
+    _smoothedCenterOffset = _playheadSeconds;
+
+    // Compute adaptive speed so playback always takes ~20s regardless of
+    // session length (clamped: minimum 4.2x, no upper limit).
+    final totalSecs = (clustered.last.point.offsetSeconds -
+            clustered.first.point.offsetSeconds)
+        .toDouble()
+        .clamp(1.0, double.infinity);
+    _totalDurationSeconds = totalSecs;
+    const targetPlaybackSeconds = 20.0;
+    _adaptedBaseSpeed =
+        (totalSecs / targetPlaybackSeconds).clamp(4.2, double.infinity);
+    // Context window: always show ~8% of the total timeline in the
+    // scrolling stage, but never less than 12 s and never more than 120 s.
+    _adaptedContextWindowSeconds = (totalSecs * 0.08).clamp(12.0, 120.0);
+  }
+
+  void _startAutoPlay() {
+    _ticker?.dispose();
+    final points = _displayPoints;
+    if (points.length <= 1) return;
+
+    _lastElapsed = Duration.zero;
+    _holdUntilElapsed = const Duration(milliseconds: 500);
+
+    _ticker = createTicker((elapsed) {
+      final delta = elapsed - _lastElapsed;
+      _lastElapsed = elapsed;
+
+      if (elapsed < _holdUntilElapsed) return;
+
+      final maxOffset = points.last.point.offsetSeconds.toDouble();
+      final avgGap =
+          _totalDurationSeconds / (points.length > 1 ? points.length - 1 : 1);
+      var speed = _adaptedBaseSpeed;
+      if (_nextEventIndex < points.length) {
+        final nextEventOffset =
+            points[_nextEventIndex].point.offsetSeconds.toDouble();
+        final gapToNext = nextEventOffset - _playheadSeconds;
+        if (gapToNext > avgGap * 4) {
+          speed = _adaptedBaseSpeed * 2.5;
+        } else if (gapToNext > avgGap * 2) {
+          speed = _adaptedBaseSpeed * 1.8;
+        } else if (gapToNext > avgGap) {
+          speed = _adaptedBaseSpeed * 1.3;
+        }
+      }
+      final step = (delta.inMicroseconds / 1000000.0) * speed;
+      final nextPlayhead = _playheadSeconds + step;
+
+      if (nextPlayhead >= maxOffset) {
+        setState(() {
+          _activeIndex = points.length - 1;
+          _playheadSeconds = maxOffset;
+          _smoothedCenterOffset = maxOffset;
+          _isFinished = true;
+        });
+        _ticker?.stop();
+        return;
+      }
+
+      var hitEvent = false;
+      while (_nextEventIndex < points.length &&
+          nextPlayhead >= points[_nextEventIndex].point.offsetSeconds) {
+        _activeIndex = _nextEventIndex;
+        _nextEventIndex++;
+        hitEvent = true;
+      }
+
+      setState(() {
+        _playheadSeconds = nextPlayhead;
+        _smoothedCenterOffset += (nextPlayhead - _smoothedCenterOffset) * 0.12;
+        if (hitEvent) {
+          _holdUntilElapsed = elapsed + _eventHold;
+        }
+      });
+    })
+      ..start();
+  }
+
+  void _restartPlayback() {
+    setState(() => _isFinished = false);
+    _prepareTimeline();
+    _startAutoPlay();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final points = _displayPoints;
+    if (points.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final safeActiveIndex =
+        _activeIndex >= points.length ? points.length - 1 : _activeIndex;
+    final activeDisplay = points[safeActiveIndex];
+    final active = activeDisplay.point;
+    final maxOffset = points
+        .map((point) => point.point.offsetSeconds)
+        .fold<int>(1, (max, value) => value > max ? value : max);
+    final minOffset = points.first.point.offsetSeconds;
+    final visibleCenterOffset =
+        _smoothedCenterOffset.clamp(minOffset.toDouble(), maxOffset.toDouble());
+    final denseClusters =
+        points.where((point) => point.mergedCount > 1).toList(growable: false);
+
+    final crowdEmoji = active.feedback.leadingEmoji ?? active.emoji;
+
+    return _RecapStoryCard(
+      title: widget.deckTitle,
+      heroLine: 'REACTION\nPLAYER',
+      accentColor: const Color(0xFF0EE6B7),
+      backgroundColor: Colors.white,
+      showBlob: false,
+      onShare: widget.onShare,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Playhead Stage ───────────────────────────────────
+          SizedBox(
+            height: 216,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final pixelsPerSecond = width / _adaptedContextWindowSeconds;
+                final centerX = width / 2;
+
+                return Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    // Burst-Badge
+                    if (denseClusters.isNotEmpty)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '${denseClusters.length}x Burst',
+                            style: GoogleFonts.montserrat(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Horizontale Timeline-Linie
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 110,
+                      child: Container(
+                        height: 3,
+                        color: Colors.black12,
+                      ),
+                    ),
+                    // Vertikale Playhead-Linie (unter den Dots)
+                    Align(
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 2,
+                        height: 216,
+                        color: Colors.black.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    // Emoji-Dots (über der Playhead-Linie)
+                    for (final entry in points.asMap().entries)
+                      Builder(
+                        builder: (context) {
+                          final idx = entry.key;
+                          final point = entry.value;
+                          final dx = centerX +
+                              ((point.point.offsetSeconds -
+                                      visibleCenterOffset) *
+                                  pixelsPerSecond);
+                          final edgeFade = (dx / 28.0).clamp(0.0, 1.0) *
+                              ((width - dx) / 28.0).clamp(0.0, 1.0);
+                          if (edgeFade == 0) return const SizedBox.shrink();
+                          final isActive = idx == safeActiveIndex;
+                          final halfSize = isActive ? 18.0 : 12.0;
+                          final safeDx = dx.clamp(halfSize, width - halfSize);
+
+                          return Positioned(
+                            left: safeDx - halfSize,
+                            top: 98,
+                            child: Opacity(
+                              opacity: edgeFade,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                width: isActive ? 36 : 24,
+                                height: isActive ? 36 : 24,
+                                alignment: Alignment.center,
+                                transform: Matrix4.translationValues(
+                                    0, isActive ? -6 : 0, 0),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? AppColors.secondary
+                                      : Colors.white,
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: isActive ? 2 : 1.2,
+                                  ),
+                                  boxShadow: isActive
+                                      ? [
+                                          const BoxShadow(
+                                            color: Colors.black,
+                                            offset: Offset(2, 2),
+                                            blurRadius: 0,
+                                          )
+                                        ]
+                                      : null,
+                                ),
+                                child: Text(
+                                  point.point.emoji,
+                                  style:
+                                      TextStyle(fontSize: isActive ? 16 : 12),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    // CROWD-Bereich (oben)
+                    Positioned(
+                      top: 2,
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'CROWD',
+                              style: GoogleFonts.montserrat(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(begin: 0.92, end: 1)
+                                      .animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  key: ValueKey<String>(
+                                    'crowd_${active.offsetSeconds}_$crowdEmoji',
+                                  ),
+                                  width: 52,
+                                  height: 52,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: active.emoji != crowdEmoji
+                                          ? const Color(0xFFFF6B6B)
+                                          : Colors.black,
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: active.emoji != crowdEmoji
+                                            ? const Color(0xFFFF6B6B)
+                                            : Colors.black,
+                                        offset: const Offset(2, 2),
+                                        blurRadius: 0,
+                                      )
+                                    ],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    crowdEmoji,
+                                    style: const TextStyle(fontSize: 26),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: -10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      '${active.feedback.totalResponses}×',
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.white,
+                                        fontSize: 7,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // DEIN MOMENT-Bereich (unten)
+                    Positioned(
+                      bottom: 2,
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(begin: 0.92, end: 1)
+                                      .animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Container(
+                              key: ValueKey<String>(
+                                'user_${active.offsetSeconds}_${active.emoji}',
+                              ),
+                              padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary,
+                                border:
+                                    Border.all(color: Colors.black, width: 2),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black,
+                                    offset: Offset(2, 2),
+                                    blurRadius: 0,
+                                  )
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(active.emoji,
+                                      style: const TextStyle(fontSize: 22)),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'DEIN MOMENT',
+                                        style: GoogleFonts.montserrat(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.5),
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatOffset(active.offsetSeconds),
+                                        style: GoogleFonts.montserrat(
+                                          color: Colors.black,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (activeDisplay.mergedCount > 1) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 2,
+                                      ),
+                                      color: Colors.black,
+                                      child: Text(
+                                        'x${activeDisplay.mergedCount}',
+                                        style: GoogleFonts.montserrat(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.02),
+              border: Border.all(color: Colors.black12, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'TIMELINE · ${points.length} Reaktionen',
+                      style: GoogleFonts.montserrat(
+                        color: Colors.black54,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_isFinished)
+                      GestureDetector(
+                        onTap: _restartPlayback,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black,
+                                offset: Offset(1.5, 1.5),
+                                blurRadius: 0,
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.replay,
+                                  size: 10, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(
+                                'NOCHMAL',
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 46,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final progressRatio = maxOffset <= minOffset
+                          ? 0.0
+                          : ((visibleCenterOffset - minOffset) /
+                                  (maxOffset - minOffset))
+                              .clamp(0.0, 1.0);
+                      final markerX =
+                          (progressRatio * width).clamp(1.0, width - 1);
+
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 22,
+                            child: Container(height: 2, color: Colors.black12),
+                          ),
+                          Positioned(
+                            left: 0,
+                            width: markerX,
+                            top: 22,
+                            child: Container(
+                              height: 2,
+                              color: AppColors.secondary.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          for (final entry in points.asMap().entries)
+                            Builder(
+                              builder: (context) {
+                                final index = entry.key;
+                                final point = entry.value;
+                                final ratio = maxOffset <= minOffset
+                                    ? 0.0
+                                    : ((point.point.offsetSeconds - minOffset) /
+                                            (maxOffset - minOffset))
+                                        .clamp(0.0, 1.0);
+                                final x = ratio * width;
+                                final isActive = index == safeActiveIndex;
+                                final halfSize = isActive ? 10.0 : 7.0;
+                                final safeX =
+                                    x.clamp(halfSize, width - halfSize);
+
+                                return Positioned(
+                                  left: safeX - halfSize,
+                                  top: isActive ? 11 : 14,
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    width: isActive ? 20 : 14,
+                                    height: isActive ? 20 : 14,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? AppColors.secondary
+                                          : Colors.white,
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: isActive ? 1.6 : 1,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      point.point.emoji,
+                                      style: TextStyle(
+                                        fontSize: isActive ? 10 : 8,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          Positioned(
+                            left: markerX - 1,
+                            top: 2,
+                            child: Container(
+                              width: 2,
+                              height: 40,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      _formatOffset(minOffset),
+                      style: GoogleFonts.dmSans(
+                        color: Colors.black45,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatOffset(maxOffset),
+                      style: GoogleFonts.dmSans(
+                        color: Colors.black45,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        active.anchor.label,
+                        style: GoogleFonts.dmSans(
+                          color: Colors.black54,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    // const SizedBox(width: 6),
+                    // Text(
+                    //   '· ${active.feedback.totalResponses} Samples',
+                    //   style: GoogleFonts.dmSans(
+                    //     color: Colors.black38,
+                    //     fontSize: 10,
+                    //     fontWeight: FontWeight.w500,
+                    //   ),
+                    // ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatOffset(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '$minutes:${secs.toString().padLeft(2, '0')}';
+  }
+}
+
+class _DisplayReactionPoint {
+  final BingoReactionTimelinePoint point;
+  final int mergedCount;
+
+  const _DisplayReactionPoint({
+    required this.point,
+    required this.mergedCount,
+  });
+}
+
+class _FloatingLiveReaction {
+  final String id;
+  final String emoji;
+  final int emojiIndex;
+
+  const _FloatingLiveReaction({
+    required this.id,
+    required this.emoji,
+    required this.emojiIndex,
+  });
+}
+
+class _FloatingReactionBubble extends StatelessWidget {
+  final String emoji;
+
+  const _FloatingReactionBubble({required this.emoji});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1000),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final y = -42 * value;
+        final opacity = 1 - (value * 0.92);
+        return Opacity(
+          opacity: opacity.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, y),
+            child: Transform.scale(
+              scale: 1 + (value * 0.12),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: Text(
+        emoji,
+        style: const TextStyle(fontSize: 20),
+      ),
+    );
+  }
+}
+
 class _RecapStoryCard extends StatelessWidget {
   final String title;
   final String heroLine;
@@ -3113,7 +4267,7 @@ class _RecapStoryCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFFFAF8FF),
+          color: backgroundColor,
           border: Border.all(color: Colors.black, width: 2.5),
           boxShadow: [
             BoxShadow(
@@ -3192,7 +4346,8 @@ class _RecapStoryCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: Colors.black,
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: Colors.black, width: 1),
+                                border:
+                                    Border.all(color: Colors.black, width: 1),
                               ),
                               child: const Icon(
                                 Icons.dashboard_outlined,
@@ -3362,10 +4517,9 @@ class _RecapStoryCard extends StatelessWidget {
 
 List<BingoEmotionAggregate> _pickCloudEntries(
   List<BingoEmotionAggregate> entries,
-  String? userEmoji,
-  {int maxEntries = 6,
-  }
-) {
+  String? userEmoji, {
+  int maxEntries = 6,
+}) {
   if (entries.isEmpty) return const [];
   final top = entries.take(maxEntries).toList();
   if (userEmoji == null || userEmoji.isEmpty) return top;
@@ -3391,12 +4545,14 @@ List<BingoEmotionAggregate> _pickCloudEntries(
 
 String _buildRecapDeckTitle(BingoSessionView session) {
   final title = session.showTitle.trim().toUpperCase();
-  final seasonToken = (session.seasonNumber != null && session.seasonNumber! > 0)
-      ? 'S${session.seasonNumber}'
-      : 'SX';
-  final episodeToken = (session.episodeNumber != null && session.episodeNumber! > 0)
-      ? 'E${session.episodeNumber}'
-      : 'EX';
+  final seasonToken =
+      (session.seasonNumber != null && session.seasonNumber! > 0)
+          ? 'S${session.seasonNumber}'
+          : 'SX';
+  final episodeToken =
+      (session.episodeNumber != null && session.episodeNumber! > 0)
+          ? 'E${session.episodeNumber}'
+          : 'EX';
   return '$title • $seasonToken$episodeToken';
 }
 
@@ -3436,13 +4592,15 @@ int? _optionIndex(BingoExpectationDimension dimension, String emoji) {
     return (
       heroLine: 'EINE WELLENLÄNGE\nMIT DER CROWD',
       heroSubline: '',
-      microInsight: 'Dein Gefühl nach der Folge war ähnlich intensiv wie das der anderen.',
+      microInsight:
+          'Dein Gefühl nach der Folge war ähnlich intensiv wie das der anderen.',
     );
   }
 
   final userMoreIntense = userScore > crowdScore;
   return (
-    heroLine: userMoreIntense ? 'DU WARST\nINTENSIVER' : 'DU WARST\nENTSPANNTER',
+    heroLine:
+        userMoreIntense ? 'DU WARST\nINTENSIVER' : 'DU WARST\nENTSPANNTER',
     heroSubline: 'als die Crowd',
     microInsight: userMoreIntense
         ? 'Für dich war die Folge heftiger als für die meisten.'
@@ -3488,7 +4646,7 @@ class _EpisodeRecapCard extends StatelessWidget {
           ? 'Community\nHeat Loading'
           : 'TOP MOMENTE\nDER EPISODE',
       accentColor: const ui.Color.fromARGB(255, 255, 255, 255),
-      backgroundColor: const ui.Color.fromARGB(255, 32, 32, 32),
+      backgroundColor: Colors.white,
       showBlob: false,
       showHeroAccent: false,
       heroLine1Color: AppColors.secondary,
@@ -3529,7 +4687,8 @@ class _EpisodeRecapCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.orange.shade700, width: 2),
+                        border:
+                            Border.all(color: Colors.orange.shade700, width: 2),
                         color: Colors.orange.shade50,
                       ),
                       child: Text(
@@ -3684,11 +4843,9 @@ class _CommunityBoardHeatmapCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _RecapStoryCard(
       title: deckTitle,
-      heroLine: heatmapData == null
-          ? 'Heatmap\nLoading'
-          : 'BINGO HEATMAP',
+      heroLine: heatmapData == null ? 'Heatmap\nLoading' : 'BINGO HEATMAP',
       accentColor: const ui.Color.fromARGB(255, 255, 255, 255),
-      backgroundColor: const ui.Color.fromARGB(255, 32, 32, 32),
+      backgroundColor: Colors.white,
       showBlob: false,
       showHero: false,
       onShare: onShare,
@@ -3729,7 +4886,8 @@ class _CommunityBoardHeatmapCard extends StatelessWidget {
                       angle: -0.02,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: AppColors.secondary,
                           border: Border.all(color: Colors.black, width: 2),
@@ -3753,23 +4911,24 @@ class _CommunityBoardHeatmapCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (heatmapData!.isLowDataSample)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.orange.shade700, width: 2),
-                        color: Colors.orange.shade50,
-                      ),
-                      child: Text(
-                        'Noch zu früh, aber Muster entstehen 🔬',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.orange.shade900,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  if (heatmapData!.isLowDataSample) const SizedBox(height: 8),
+                  // if (heatmapData!.isLowDataSample)
+                  //   Container(
+                  //     padding: const EdgeInsets.all(8),
+                  //     decoration: BoxDecoration(
+                  //       border:
+                  //           Border.all(color: Colors.orange.shade700, width: 2),
+                  //       color: Colors.orange.shade50,
+                  //     ),
+                  //     child: Text(
+                  //       'Noch zu früh, aber Muster entstehen 🔬',
+                  //       style: GoogleFonts.dmSans(
+                  //         color: Colors.orange.shade900,
+                  //         fontSize: 11,
+                  //         fontWeight: FontWeight.w600,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // if (heatmapData!.isLowDataSample) const SizedBox(height: 8),
                   // Text(
                   //   'Gesamt: ${heatmapData!.totalClicks} Klicks über ${heatmapData!.totalSessions} Sessions',
                   //   style: GoogleFonts.dmSans(
@@ -3798,9 +4957,8 @@ class _CommunityBoardHeatmapCard extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : 320.0;
+        final availableWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 320.0;
         final cellWidth = availableWidth / gridSize;
         final cellHeight = cellWidth / 0.75;
         final boardHeight = cellHeight * gridSize;
@@ -3822,12 +4980,12 @@ class _CommunityBoardHeatmapCard extends StatelessWidget {
               final entry = entries[index];
               final bgColor = _getHeatmapColor(entry.relativeFrequency);
               final textColor = entry.relativeFrequency >= 0.15
-                ? Colors.black
-                : Colors.black87;
+                  ? Colors.black
+                  : Colors.black87;
               final badgeTextColor = Colors.white;
               final borderColor = entry.relativeFrequency > 0
-                ? AppColors.secondary.withValues(alpha: 0.78)
-                : const Color(0xFFC8C8C8);
+                  ? AppColors.secondary.withValues(alpha: 0.78)
+                  : const Color(0xFFC8C8C8);
 
               return Container(
                 decoration: BoxDecoration(
@@ -3844,7 +5002,8 @@ class _CommunityBoardHeatmapCard extends StatelessWidget {
                       Align(
                         alignment: Alignment.topRight,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.35),
                             borderRadius: BorderRadius.circular(2),
@@ -4106,7 +5265,8 @@ class _InlineBingoCelebrationState extends State<_InlineBingoCelebration>
                                 BorderSide(color: Colors.black, width: 2),
                               ),
                               boxShadow: [
-                                BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+                                BoxShadow(
+                                    color: Colors.black, offset: Offset(2, 2)),
                               ],
                             ),
                             alignment: Alignment.center,
@@ -4123,20 +5283,23 @@ class _InlineBingoCelebrationState extends State<_InlineBingoCelebration>
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           border: Border.fromBorderSide(
                             BorderSide(color: Colors.black, width: 3),
                           ),
                           boxShadow: [
-                            BoxShadow(color: Colors.black, offset: Offset(6, 6)),
+                            BoxShadow(
+                                color: Colors.black, offset: Offset(6, 6)),
                           ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.auto_awesome_rounded, color: Colors.black),
+                            const Icon(Icons.auto_awesome_rounded,
+                                color: Colors.black),
                             const SizedBox(width: 10),
                             Text(
                               'BINGO!',

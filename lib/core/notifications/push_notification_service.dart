@@ -306,7 +306,8 @@ class PushNotificationService {
           await syncTokenIfPermissionGranted();
           break;
         case AuthChangeEvent.signedOut:
-          await _deactivateCurrentDevice();
+          // Deactivation is handled explicitly before sign-out in
+          // AuthRepositoryImpl.signOut() so the session is still valid.
           break;
         case AuthChangeEvent.passwordRecovery:
         case AuthChangeEvent.mfaChallengeVerified:
@@ -471,6 +472,11 @@ class PushNotificationService {
       _logger.e('Failed to sync FCM token', e, stackTrace);
     }
   }
+
+  /// Deactivates the current device record in Supabase.
+  /// Must be called **before** [supabase.auth.signOut()] so the user's
+  /// session is still valid and the RLS policy (`auth.uid()`) can match.
+  Future<void> deactivateForSignOut() => _deactivateCurrentDevice();
 
   Future<void> _deactivateCurrentDevice() async {
     if (!_firebaseReady) {

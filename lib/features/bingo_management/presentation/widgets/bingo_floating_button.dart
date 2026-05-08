@@ -18,54 +18,39 @@ class BingoFloatingButton extends ConsumerWidget {
 
     if (active == null) return const SizedBox.shrink();
 
+    final hasBingo = active.bingoReached;
+
     return Positioned(
       right: 14,
       bottom: bottomOffset,
       child: SafeArea(
-        child: Tooltip(
-          message: 'Aktive Bingo-Session öffnen',
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () =>
-                  ref.read(bingoSessionProvider.notifier).openActiveSessionOverlay(),
-              child: Container(
-                width: 60,
-                height: 60,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.secondary.withValues(alpha: 0.95),
-                      AppColors.secondary.withValues(alpha: 0.45),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.secondary.withValues(alpha: 0.35),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+        child: GestureDetector(
+          onTap: () =>
+              ref.read(bingoSessionProvider.notifier).openActiveSessionOverlay(),
+          child: Transform.rotate(
+            angle: -0.02,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: hasBingo ? AppColors.secondary : Colors.black,
+                border: Border.all(
+                  color: hasBingo ? Colors.black : AppColors.secondary,
+                  width: 2,
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF101010),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.16),
-                    ),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(3, 3),
+                    blurRadius: 0,
                   ),
-                  child: Icon(
-                    Icons.live_tv_rounded,
-                    color: active.bingoReached ? AppColors.secondary : Colors.white,
-                    size: 28,
-                  ),
-                ),
+                ],
+              ),
+              child: Icon(
+                hasBingo ? Icons.star_rounded : Icons.live_tv_rounded,
+                size: 22,
+                color: hasBingo ? Colors.black : AppColors.secondary,
               ),
             ),
           ),
@@ -73,5 +58,5 @@ class BingoFloatingButton extends ConsumerWidget {
       ),
     );
   }
-
 }
+

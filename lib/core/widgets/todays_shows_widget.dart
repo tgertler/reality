@@ -184,6 +184,7 @@ class TodayShowsWidget extends ConsumerWidget {
                             border: Border.fromBorderSide(
                               BorderSide(color: Colors.black, width: 2),
                             ),
+                            borderRadius: BorderRadius.all(Radius.circular(6)),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black,
@@ -192,9 +193,7 @@ class TodayShowsWidget extends ConsumerWidget {
                             ],
                           ),
                           child: Icon(
-                            hasActiveForThisEvent
-                                ? Icons.live_tv_rounded
-                                : Icons.play_arrow_rounded,
+                            Icons.live_tv_rounded,
                             size: 18,
                             color: Colors.black,
                           ),

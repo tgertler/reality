@@ -60,6 +60,7 @@ dependencies:
   firebase_messaging: ^16.2.0
   share_plus: ^10.1.4
   shared_preferences: ^2.5.5
+  purchases_flutter: ^10.0.2
 
 dev_dependencies:
   flutter_test:

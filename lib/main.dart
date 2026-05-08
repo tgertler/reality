@@ -20,9 +20,6 @@ void main() async {
     anonKey: supabaseKey,
   );
 
-  // bool ready = await GRecaptchaV3.ready(
-  //     "6LfVvfIqAAAAANFTnYwjA81Wlj_yrCbTUWxQISWX"); //--2
-// nachher:
 const recaptchaKey = String.fromEnvironment('RECAPTCHA_KEY');
 bool ready = await GRecaptchaV3.ready(recaptchaKey);
   GRecaptchaV3.hideBadge();

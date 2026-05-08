@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/features/feed_management/data/models/feed_item.dart';
+import 'package:frontend/features/feed_management/presentation/widgets/cards/bingo_emotions_per_show_block_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/bingo_feature_promo_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/coming_this_week_block_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/featured_show_block_feed_card.dart';
@@ -13,8 +14,12 @@ import 'package:frontend/features/feed_management/presentation/widgets/cards/quo
 import 'package:frontend/features/feed_management/presentation/widgets/cards/season_finale_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/today_shows_block_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/throwback_feed_card.dart';
+import 'package:frontend/features/feed_management/presentation/widgets/cards/trash_events_block_feed_card.dart';
+import 'package:frontend/features/feed_management/presentation/widgets/cards/trending_shows_block_feed_card.dart';
+import 'package:frontend/features/feed_management/presentation/widgets/cards/show_tiktok_hashtags_block_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/generic_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/cards/generic_bingo_stats_block_feed_card.dart';
+import 'package:frontend/features/feed_management/presentation/widgets/cards/bingo_field_heatmap_block_feed_card.dart';
 import 'package:frontend/features/feed_management/presentation/widgets/feed_card_share_wrapper.dart';
 
 class FeedItemRenderer extends StatelessWidget {
@@ -69,6 +74,16 @@ class FeedItemRenderer extends StatelessWidget {
       case 'generic_bingo_stats_block':
       case 'bingo_stats_block':
         card = GenericBingoStatsBlockFeedCard(item: feedItem);
+      case 'bingo_field_heatmap_block':
+        card = BingoFieldHeatmapBlockFeedCard(item: feedItem);
+      case 'trending_shows_block':
+        card = TrendingShowsBlockFeedCard(item: feedItem);
+      case 'show_tiktok_hashtags_block':
+        card = ShowTiktokHashtagsBlockFeedCard(item: feedItem);
+      case 'trash_events_block':
+        card = TrashEventsBlockFeedCard(item: feedItem);
+      case 'bingo_emotions_per_show_block':
+        card = BingoEmotionsPerShowBlockFeedCard(item: feedItem);
       default:
         card = GenericFeedCard(item: feedItem);
     }

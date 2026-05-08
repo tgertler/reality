@@ -64,10 +64,14 @@ class UserState {
 class UserProfile {
   final String id;
   final String displayName;
+  final bool isPremium;
+  final DateTime? premiumUntil;
 
   const UserProfile({
     required this.id,
     required this.displayName,
+    this.isPremium = false,
+    this.premiumUntil,
   });
 }
 
@@ -295,7 +299,12 @@ class UserNotifier extends StateNotifier<UserState> {
 
       state = state.copyWith(
         isProfileLoading: false,
-        profile: UserProfile(id: user.id, displayName: sanitized),
+        profile: UserProfile(
+          id: user.id,
+          displayName: sanitized,
+          isPremium: state.profile?.isPremium ?? false,
+          premiumUntil: state.profile?.premiumUntil,
+        ),
       );
     } catch (e, stackTrace) {
       _logger.e('Error updating profile name', e, stackTrace);
@@ -313,15 +322,26 @@ class UserNotifier extends StateNotifier<UserState> {
     try {
       final existing = await Supabase.instance.client
           .from('profiles')
-          .select('display_name')
+          .select('display_name, is_premium, premium_until')
           .eq('id', user.id)
           .maybeSingle();
 
       final existingDisplayName = existing?['display_name']?.toString().trim();
+      final existingIsPremium = existing?['is_premium'] == true;
+      final existingPremiumUntilRaw = existing?['premium_until']?.toString();
+      final existingPremiumUntil = existingPremiumUntilRaw == null
+          ? null
+          : DateTime.tryParse(existingPremiumUntilRaw)?.toLocal();
+
       if (existingDisplayName != null && existingDisplayName.isNotEmpty) {
         state = state.copyWith(
           isProfileLoading: false,
-          profile: UserProfile(id: user.id, displayName: existingDisplayName),
+          profile: UserProfile(
+            id: user.id,
+            displayName: existingDisplayName,
+            isPremium: existingIsPremium,
+            premiumUntil: existingPremiumUntil,
+          ),
         );
         return;
       }
@@ -340,7 +360,12 @@ class UserNotifier extends StateNotifier<UserState> {
 
       state = state.copyWith(
         isProfileLoading: false,
-        profile: UserProfile(id: user.id, displayName: fallbackName),
+        profile: UserProfile(
+          id: user.id,
+          displayName: fallbackName,
+          isPremium: existingIsPremium,
+          premiumUntil: existingPremiumUntil,
+        ),
       );
     } catch (e, stackTrace) {
       _logger.e('Error loading/creating profile', e, stackTrace);

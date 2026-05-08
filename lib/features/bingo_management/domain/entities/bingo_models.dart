@@ -34,6 +34,55 @@ class BingoBoardItem {
   }
 }
 
+enum BingoSessionPhase {
+  prestart,
+  live,
+  completed,
+}
+
+extension BingoSessionPhaseX on BingoSessionPhase {
+  String get dbValue {
+    switch (this) {
+      case BingoSessionPhase.prestart:
+        return 'PRESTART';
+      case BingoSessionPhase.live:
+        return 'LIVE';
+      case BingoSessionPhase.completed:
+        return 'COMPLETED';
+    }
+  }
+}
+
+enum BingoReactionAnchor {
+  beginning,
+  middle,
+  end,
+}
+
+extension BingoReactionAnchorX on BingoReactionAnchor {
+  String get dbValue {
+    switch (this) {
+      case BingoReactionAnchor.beginning:
+        return 'BEGINNING';
+      case BingoReactionAnchor.middle:
+        return 'MIDDLE';
+      case BingoReactionAnchor.end:
+        return 'END';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case BingoReactionAnchor.beginning:
+        return 'Anfang';
+      case BingoReactionAnchor.middle:
+        return 'Mitte';
+      case BingoReactionAnchor.end:
+        return 'Ende';
+    }
+  }
+}
+
 class BingoSessionView {
   final String sessionId;
   final String bingoId;
@@ -46,6 +95,9 @@ class BingoSessionView {
   final int? seasonNumber;
   final DateTime startedAt;
   final DateTime? endedAt;
+  final DateTime? countdownStartedAt;
+  final DateTime? liveStartedAt;
+  final BingoSessionPhase phase;
   final String status;
   final List<BingoBoardItem> boardItems;
 
@@ -61,6 +113,9 @@ class BingoSessionView {
     required this.seasonNumber,
     required this.startedAt,
     required this.endedAt,
+    required this.countdownStartedAt,
+    required this.liveStartedAt,
+    required this.phase,
     required this.status,
     required this.boardItems,
   });
@@ -86,8 +141,8 @@ class BingoSessionView {
         .toSet();
 
     for (int r = 0; r < size; r++) {
-      final rowComplete = List.generate(size, (c) => r * size + c)
-          .every(checked.contains);
+      final rowComplete =
+          List.generate(size, (c) => r * size + c).every(checked.contains);
       if (rowComplete) return true;
     }
 
@@ -97,11 +152,12 @@ class BingoSessionView {
       if (colComplete) return true;
     }
 
-    final diag1 = List.generate(size, (i) => i * size + i).every(checked.contains);
+    final diag1 =
+        List.generate(size, (i) => i * size + i).every(checked.contains);
     if (diag1) return true;
 
-    final diag2 =
-        List.generate(size, (i) => i * size + (size - i - 1)).every(checked.contains);
+    final diag2 = List.generate(size, (i) => i * size + (size - i - 1))
+        .every(checked.contains);
     if (diag2) return true;
 
     return false;
@@ -112,6 +168,9 @@ class BingoSessionView {
     String? status,
     DateTime? endedAt,
     String? mode,
+    DateTime? countdownStartedAt,
+    DateTime? liveStartedAt,
+    BingoSessionPhase? phase,
   }) {
     return BingoSessionView(
       sessionId: sessionId,
@@ -125,10 +184,104 @@ class BingoSessionView {
       seasonNumber: seasonNumber,
       startedAt: startedAt,
       endedAt: endedAt ?? this.endedAt,
+      countdownStartedAt: countdownStartedAt ?? this.countdownStartedAt,
+      liveStartedAt: liveStartedAt ?? this.liveStartedAt,
+      phase: phase ?? this.phase,
       status: status ?? this.status,
       boardItems: boardItems ?? this.boardItems,
     );
   }
+}
+
+class BingoReactionFeedback {
+  final String selectedEmoji;
+  final int totalResponses;
+  final int sameEmojiResponses;
+  final String? topOtherEmoji;
+  final double sameEmojiRate;
+  final DateTime createdAt;
+
+  const BingoReactionFeedback({
+    required this.selectedEmoji,
+    required this.totalResponses,
+    required this.sameEmojiResponses,
+    required this.topOtherEmoji,
+    required this.sameEmojiRate,
+    required this.createdAt,
+  });
+
+  String get message {
+    if (totalResponses < 3) {
+      return 'Noch zu wenig los – erste kommen rein.';
+    }
+    if (sameEmojiRate >= 0.55) {
+      return 'Die Crowd fühlt genau wie du!';
+    }
+    if (sameEmojiRate >= 0.35) {
+      return 'Du bist damit nicht allein.';
+    }
+    if (topOtherEmoji == null || topOtherEmoji!.isEmpty) {
+      return 'Alle reagieren gerade anders.';
+    }
+    return 'Die meisten reagieren mit $topOtherEmoji.';
+  }
+
+  String? get leadingEmoji {
+    if (sameEmojiResponses > 0 && sameEmojiRate >= 0.5) {
+      return selectedEmoji;
+    }
+    if (topOtherEmoji != null && topOtherEmoji!.isNotEmpty) {
+      return topOtherEmoji;
+    }
+    if (sameEmojiResponses > 0) {
+      return selectedEmoji;
+    }
+    return null;
+  }
+}
+
+class BingoCrowdReactionSnapshot {
+  final String? emoji;
+  final int sampleCount;
+  final BingoReactionAnchor anchor;
+  final int reactionOffsetSeconds;
+  final DateTime createdAt;
+
+  const BingoCrowdReactionSnapshot({
+    required this.emoji,
+    required this.sampleCount,
+    required this.anchor,
+    required this.reactionOffsetSeconds,
+    required this.createdAt,
+  });
+
+  bool get hasData => emoji != null && emoji!.isNotEmpty && sampleCount > 0;
+}
+
+class BingoReactionTimelinePoint {
+  final String emoji;
+  final BingoReactionAnchor anchor;
+  final int offsetSeconds;
+  final BingoReactionFeedback feedback;
+
+  const BingoReactionTimelinePoint({
+    required this.emoji,
+    required this.anchor,
+    required this.offsetSeconds,
+    required this.feedback,
+  });
+}
+
+class BingoReactionTimelineRecap {
+  final String sessionId;
+  final List<BingoReactionTimelinePoint> points;
+
+  const BingoReactionTimelineRecap({
+    required this.sessionId,
+    required this.points,
+  });
+
+  bool get hasData => points.isNotEmpty;
 }
 
 class BingoSessionStatsView {
@@ -606,3 +759,122 @@ const List<BingoEmotionOption> kBingoAfterglowOptions = [
   BingoEmotionOption(emoji: '🙄', label: 'Nichts\nNeues'),
   BingoEmotionOption(emoji: '🧊', label: 'Ruhig'),
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User-level bingo statistics (premium feature: Persönliche Statistiken)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class UserBingoStatsTopShow {
+  final String showTitle;
+  final int sessionCount;
+  final int bingoCount;
+
+  const UserBingoStatsTopShow({
+    required this.showTitle,
+    required this.sessionCount,
+    required this.bingoCount,
+  });
+
+  factory UserBingoStatsTopShow.fromJson(Map<String, dynamic> json) {
+    return UserBingoStatsTopShow(
+      showTitle: json['show_title']?.toString() ?? '',
+      sessionCount: (json['session_count'] as num?)?.toInt() ?? 0,
+      bingoCount: (json['bingo_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class UserBingoStatsView {
+  final int totalSessions;
+  final int totalBingos;
+  final double bingoRate;
+  final double? bestTimeSeconds;
+  final double avgScore;
+  final double avgFieldsAtBingo;
+  final double topScore;
+  final List<UserBingoStatsTopShow> topShows;
+
+  const UserBingoStatsView({
+    required this.totalSessions,
+    required this.totalBingos,
+    required this.bingoRate,
+    required this.bestTimeSeconds,
+    required this.avgScore,
+    required this.avgFieldsAtBingo,
+    required this.topScore,
+    required this.topShows,
+  });
+
+  factory UserBingoStatsView.fromJson(Map<String, dynamic> json) {
+    double? _d(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    }
+
+    final rawShows = json['top_shows'];
+    final topShows = (rawShows is List)
+        ? rawShows
+            .whereType<Map>()
+            .map((e) => UserBingoStatsTopShow.fromJson(
+                Map<String, dynamic>.from(e)))
+            .toList()
+        : <UserBingoStatsTopShow>[];
+
+    return UserBingoStatsView(
+      totalSessions: (json['total_sessions'] as num?)?.toInt() ?? 0,
+      totalBingos: (json['total_bingos'] as num?)?.toInt() ?? 0,
+      bingoRate: _d(json['bingo_rate']) ?? 0.0,
+      bestTimeSeconds: _d(json['best_time_seconds']),
+      avgScore: _d(json['avg_score']) ?? 0.0,
+      avgFieldsAtBingo: _d(json['avg_fields_at_bingo']) ?? 0.0,
+      topScore: _d(json['top_score']) ?? 0.0,
+      topShows: topShows,
+    );
+  }
+
+  static UserBingoStatsView empty() {
+    return const UserBingoStatsView(
+      totalSessions: 0,
+      totalBingos: 0,
+      bingoRate: 0,
+      bestTimeSeconds: null,
+      avgScore: 0,
+      avgFieldsAtBingo: 0,
+      topScore: 0,
+      topShows: [],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Global bingo history entry (premium feature: Session-Historie)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class GlobalBingoHistoryEntry {
+  final String sessionId;
+  final String showTitle;
+  final int? episodeNumber;
+  final int? seasonNumber;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final bool bingoReached;
+  final double? timeToBingoSeconds;
+  final int? fieldsAtBingo;
+  final double? score;
+  final int stars;
+
+  const GlobalBingoHistoryEntry({
+    required this.sessionId,
+    required this.showTitle,
+    required this.episodeNumber,
+    required this.seasonNumber,
+    required this.startedAt,
+    required this.endedAt,
+    required this.bingoReached,
+    required this.timeToBingoSeconds,
+    required this.fieldsAtBingo,
+    required this.score,
+    required this.stars,
+  });
+}

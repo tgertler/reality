@@ -1,0 +1,10 @@
+Analyzing 3 items...                                            
+
+   info • The local variable '_d' starts with an underscore • lib/features/bingo_management/domain/entities/bingo_models.dart:809:13 • no_leading_underscores_for_local_identifiers
+   info • Invalid use of a private type in a public API • lib/features/user_management/presentation/pages/login_page.dart:15:3 • library_private_types_in_public_api
+   info • Invalid use of a private type in a public API • lib/features/user_management/presentation/pages/register_page.dart:14:3 • library_private_types_in_public_api
+   info • Invalid use of a private type in a public API • lib/features/user_management/presentation/pages/user_page.dart:23:3 • library_private_types_in_public_api
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/features/user_management/presentation/pages/user_page.dart:828:13 • deprecated_member_use
+   info • The prefix 'UserEntity' isn't a lower_case_with_underscores identifier • lib/features/user_management/presentation/providers/user_provider.dart:9:45 • library_prefixes
+
+6 issues found. (ran in 2.9s)
